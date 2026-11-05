@@ -12,5 +12,5 @@
 - Security & regression review: Link destinations must match local two-digit chapter HTML filenames; errors and footer use text nodes rather than injecting dynamic HTML. Existing 28 HTML chapters, `courses.json` and public API remain unchanged.
 - Risk & rollback: `courses-data.js` must be regenerated when `courses.json` changes; `--check` and Node tests detect drift. Revert this PR to restore prior JSON-fetch behavior if unexpected compatibility issues occur.
 - Follow-up: Execute `python3 scripts/build_course_data.py --check` and `node --test tests/catalog-offline.test.cjs` in a full target checkout; test actual Chrome `file://` use. Then evaluate chapter search/navigation and mobile sidebar accessibility.
-- Commit: pending
-- PR: pending
+- Commit: d5120e16601bd3d2264370e7478157df7421151b (initial implementation); 05abf56fe04fa3d20cb60cdb4f59b6a8f39df7f4 (test assertion cleanup)
+- PR: https://github.com/1998x-stack/llama-tutorial/pull/1
