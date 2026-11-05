@@ -257,6 +257,7 @@
         .card:nth-child(6n) .chapter-num { background: #c4b3e0; color: #2f2a4a; }
 
         .state-msg {
+            grid-column: 1 / -1;
             text-align: center;
             padding: 3rem;
             color: #5f7f66;
@@ -284,6 +285,7 @@
     </div>
 </div>
 
+<script src="courses.js"></script>
 <script>
     (function() {
         var container = document.getElementById('cardContainer');
@@ -293,15 +295,19 @@
         var footerEl = document.querySelector('.footer');
 
         function showError(msg) {
-            container.innerHTML = '<div class="state-msg error">' + msg + '</div>';
+            container.replaceChildren();
+            var message = document.createElement('div');
+            message.className = 'state-msg error';
+            message.setAttribute('role', 'alert');
+            message.textContent = msg;
+            container.appendChild(message);
         }
 
-        fetch('courses.json')
-            .then(function(res) {
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                return res.json();
-            })
-            .then(function(data) {
+        try {
+                var data = window.LLAMA_COURSES;
+                if (!data || !Array.isArray(data.chapters)) {
+                    throw new Error('课程目录文件不存在或格式无效');
+                }
                 document.title = data.title + ' · 课程目录';
                 emojiEl.textContent = data.emoji;
                 titleEl.textContent = data.title;
@@ -348,16 +354,15 @@
                     footerDiv.className = 'card-footer';
                     var link = document.createElement('a');
                     link.href = course.file;
-                    link.textContent = '开始学习 ';
+                    link.textContent = '开始学习 ' + course.num + ': ' + course.title;
                     footerDiv.appendChild(link);
                     card.appendChild(footerDiv);
 
                     container.appendChild(card);
                 });
-            })
-            .catch(function(err) {
-                showError('课程数据加载失败: ' + err.message + '。请刷新页面重试。');
-            });
+        } catch (err) {
+            showError('课程数据加载失败，请检查 courses.js 是否与 index.html 位于同一目录。');
+        }
     })();
 </script>
 
