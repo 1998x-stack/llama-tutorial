@@ -17,7 +17,12 @@
 ## 🚀 快速开始
 
 ```bash
-open index.html   # macOS，纯静态即开即看
+open index.html   # macOS，直接打开 file:// 本地课程目录，无需启动 HTTP 服务
+# 修改 courses.json 后，需重新生成离线目录：
+python3 scripts/build_course_data.py
+python3 scripts/build_course_data.py --check
+# 可选：运行无第三方依赖的 Node.js 回归测试 (Node >=18)
+node --test tests/catalog-offline.test.cjs
 ```
 
 ## 📂 项目结构

@@ -1,0 +1,16 @@
+# Improvement History
+
+### 2026-11-05 03:49 UTC — ChatGPT Portfolio Iteration
+- Run ID: 20261105T034926Z-llama-offline
+- Repo / Base SHA: 1998x-stack/llama-tutorial @ 422cfca41c6b6189d6cdae19d4656b4935346703
+- Historical context: Initial iteration. `docs/improvements.md` was verified absent (GitHub 404) before any code change; no existing PRs were returned, so no prior fixes are overwritten.
+- Product problem & expected user value: README instructs opening `index.html` directly, but the catalog used `fetch('courses.json')`; local `file://` origins commonly block sibling JSON fetches, leaving learners without the 28 chapter cards. Restore the promised no-server first-use experience.
+- Engineering diagnosis & evidence: The inline script in `index.html` hard-depended on a network-like JSON fetch and interpolated error/footer text via `innerHTML`; direct local open was not reliable. Course navigation previously assigned `course.file` without a local-path restriction.
+- Options & decision: 1) Offline-first local script manifest (score 17: user 5 + correctness 4 + evidence 5 + verifiability 5 - cost 1 - risk 1); 2) chapter filtering/search (8: 4+2+4+4-4-2); 3) broader sidebar/mobile navigation overhaul (7: 3+2+4+4-4-2). Selected offline-first catalog as the largest functional first-use blocker; restricted URLs and safe text rendering are tightly related boundary safeguards.
+- Changes: `index.html` consumes `courses-data.js` without fetch; `scripts/build_course_data.py` deterministically synchronizes it from canonical `courses.json`, checking chapter identity and paths; `tests/catalog-offline.test.cjs` covers offline render, link safety and manifest synchronization; README documents regeneration and tests. No lesson bodies or licenses changed.
+- Validation: A — executed actual updated inline JavaScript in V8 with a DOM simulator: 28 cards rendered, title and first navigation correct, fetch prohibited and unused, invalid javascript: URL rejected. C — inspected all 28 canonical chapter paths against the GitHub tree. D — Node.js repository test file and Python generator check are committed but were not executed in a cloned local repo (this environment's container cannot resolve github.com); they remain mandatory follow-up checks in reviewer environment. No physical `file://` Chromium E2E claimed.
+- Security & regression review: Link destinations must match local two-digit chapter HTML filenames; errors and footer use text nodes rather than injecting dynamic HTML. Existing 28 HTML chapters, `courses.json` and public API remain unchanged.
+- Risk & rollback: `courses-data.js` must be regenerated when `courses.json` changes; `--check` and Node tests detect drift. Revert this PR to restore prior JSON-fetch behavior if unexpected compatibility issues occur.
+- Follow-up: Execute `python3 scripts/build_course_data.py --check` and `node --test tests/catalog-offline.test.cjs` in a full target checkout; test actual Chrome `file://` use. Then evaluate chapter search/navigation and mobile sidebar accessibility.
+- Commit: d5120e16601bd3d2264370e7478157df7421151b (initial implementation); 05abf56fe04fa3d20cb60cdb4f59b6a8f39df7f4 (test assertion cleanup)
+- PR: https://github.com/1998x-stack/llama-tutorial/pull/1
