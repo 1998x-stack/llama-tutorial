@@ -301,7 +301,7 @@
         }
 
         // A same-directory script works for both file:// and HTTP/HTTPS.
-        // fetch('courses.json') fails for many local-file browser contexts.
+        // Local-file browsers may reject JSON fetches across file:// origins.
         Promise.resolve(window.LLAMA_COURSES)
             .then(function(data) {
                 if (!data || !Array.isArray(data.chapters)) {
