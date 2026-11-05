@@ -17,14 +17,29 @@
 ## 🚀 快速开始
 
 ```bash
-open index.html   # macOS，纯静态即开即看
+open index.html   # macOS，离线文件模式即可浏览全部章节
 ```
+
+首页通过同目录的 `courses.js` 加载章节数据，不依赖在 `file://` 下可能被浏览器拦截的 `fetch('courses.json')`。请保持 `index.html`、`courses.js` 和各章 HTML 在相同相对路径下。
+
+**维护课程目录时**，请只编辑 `courses.json`（唯一数据源），再生成并验证本地脚本数据：
+
+```bash
+python scripts/build_catalog.py --write
+python scripts/build_catalog.py --check
+python -m unittest discover -s tests -p 'test_*.py' -v
+node tests/smoke-index.cjs  # 可选：需要 Node.js 18+
+```
+
+构建检查会校验章节数量、顺序、链接安全和 28 个页面文件的存在性，防止 `courses.js` 与 `courses.json` 不一致。无需安装第三方 Python 依赖。
 
 ## 📂 项目结构
 
 ```text
 llama-tutorial/
-├── index.html / 01.html ~ 28.html / courses.json / theme.css
+├── index.html / 01.html ~ 28.html / courses.json / courses.js / theme.css
+├── scripts/build_catalog.py
+└── tests/
 ```
 
 ## 📖 章节目录
