@@ -284,6 +284,7 @@
     </div>
 </div>
 
+<script src="courses-data.js"></script>
 <script>
     (function() {
         var container = document.getElementById('cardContainer');
@@ -293,27 +294,33 @@
         var footerEl = document.querySelector('.footer');
 
         function showError(msg) {
-            container.innerHTML = '<div class="state-msg error">' + msg + '</div>';
+            var errorDiv = document.createElement('div');
+            errorDiv.className = 'state-msg error';
+            errorDiv.textContent = msg;
+            container.replaceChildren(errorDiv);
         }
 
-        fetch('courses.json')
-            .then(function(res) {
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                return res.json();
-            })
+        // A same-directory script works for both file:// and HTTP/HTTPS.
+        // fetch('courses.json') fails for many local-file browser contexts.
+        Promise.resolve(window.LLAMA_COURSES)
             .then(function(data) {
+                if (!data || !Array.isArray(data.chapters)) {
+                    throw new Error('课程目录数据不可用');
+                }
                 document.title = data.title + ' · 课程目录';
                 emojiEl.textContent = data.emoji;
                 titleEl.textContent = data.title;
                 subEl.textContent = data.subtitle;
-                footerEl.innerHTML = '<span>' + data.chapterCount + '章</span> 实战体系 · 从入门到精通';
+                var countSpan = document.createElement('span');
+                countSpan.textContent = data.chapters.length + '章';
+                footerEl.replaceChildren(countSpan, document.createTextNode(' 实战体系 · 从入门到精通'));
 
                 if (!data.chapters || data.chapters.length === 0) {
                     showError('暂无课程数据');
                     return;
                 }
 
-                container.innerHTML = '';
+                container.replaceChildren();
                 data.chapters.forEach(function(course) {
                     var card = document.createElement('div');
                     card.className = 'card';
@@ -347,6 +354,9 @@
                     var footerDiv = document.createElement('div');
                     footerDiv.className = 'card-footer';
                     var link = document.createElement('a');
+                    if (!/^\d{2}\.html$/.test(course.file) || course.num !== course.file.slice(0, 2)) {
+                        throw new Error('课程文件路径无效');
+                    }
                     link.href = course.file;
                     link.textContent = '开始学习 ';
                     footerDiv.appendChild(link);
