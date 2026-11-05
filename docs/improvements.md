@@ -14,5 +14,5 @@ This file records verified project improvements. Entries are append-only; future
 - Security & regression review: Only static course index, safe local data mirror, stdlib generator, tests, docs and README changed. No network execution, secrets, user data, third-party dependencies, workflow edits or deployment changes. Generator rejects path traversal, missing or out-of-order chapters, invalid fields, duplicates, stale data and symlinked chapter pages. Original HTML chapter content and URLs remain unchanged.
 - Risk & rollback: `courses.js` is a derived artifact and must be regenerated whenever courses.json changes; `--check` and tests catch drift. File URLs should be checked manually in a browser before final merge; `git revert` the PR commit to roll back.
 - Follow-up: Add a true Playwright Chromium file:// smoke test and review the 28 repeated hardcoded chapter sidebars for responsive navigation and single-source consistency, subject to independent review.
-- Commit: pending (recorded in the PR's GitHub commit history)
-- PR: pending (the workflow-independent ChatGPT task will open one Draft PR)
+- Commit: 90112831975837572f3dfb3f653bf9f56581c72c (initial improvement-history commit; subsequent log-link update is recorded in Git history)
+- PR: https://github.com/1998x-stack/llama-tutorial/pull/2 (Draft, human review required)
