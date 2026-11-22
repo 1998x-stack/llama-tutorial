@@ -9,7 +9,7 @@
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>🦙 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 LLaMA系列概述</a></li>
@@ -41,22 +41,32 @@
             <li><a href="27.html">第27章 LLaMA 4展望与MoE架构</a></li>
             <li><a href="28.html">第28章 开源LLM生态与未来趋势</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
 
-        <h2>第2章 Transformer回顾与LLaMA总览</h2>
+        <h1>第2章 Transformer回顾与LLaMA总览</h1>
+
+        <nav class="toc" aria-label="本章小节导航">
+            <strong>本章导航：</strong>
+            <a href="#sec-2-1">2.1 标准Transformer回顾</a> ·
+            <a href="#sec-2-2">2.2 Decoder-only的兴起</a> ·
+            <a href="#sec-2-3">2.3 LLaMA架构全景</a> ·
+            <a href="#sec-2-4">2.4 参数配置表</a> ·
+            <a href="#sec-2-5">2.5 演进路线图</a> ·
+            <a href="#sec-2-6">2.6 与其他模型对比</a>
+        </nav>
 
         <p>大家好，我是你们的讲师。上一章我们居高临下地俯瞰了LLaMA帝国的全貌，从系列演进到生态影响力都有了整体认知。现在我们要降落到地面，开始真正搭建技术理解的根基。这一章我们要做两件事：第一，回顾标准Transformer架构的核心组件——因为LLaMA的所有设计都是在Transformer基础上的改进；第二，在Transformer的参照系中，看清LLaMA整体架构的全貌，建立起"基础架构对比清单"。</p>
 
         <p>如果你对Transformer已经很熟悉了，可以直接跳到2.3节看LLaMA的架构全景。但我建议还是花几分钟快速过一遍前面内容——因为LLaMA对标准Transformer的修改非常精准，只有对原始设计有深刻理解，才能体会这些修改的巧妙之处。</p>
 
-        <h3>2.1 标准Transformer架构回顾</h3>
+        <h2 id="sec-2-1">2.1 标准Transformer架构回顾</h2>
 
-        <p>2017年Google发表的论文<em>"Attention Is All You Need"</em>彻底改变了NLP领域的游戏规则。Transformer的核心思想是：<strong>抛弃循环和卷积，完全基于注意力机制来建模序列中的依赖关系</strong>。这个看似激进的决策，后来被证明是那个十年中最成功的架构创新之一。</p>
+        <p>2017年Google发表的论文<a href="https://arxiv.org/abs/1706.03762"><em>“Attention Is All You Need”</em></a>（Vaswani 等，arXiv:1706.03762）彻底改变了NLP领域的游戏规则。Transformer的核心思想是:<strong>抛弃循环和卷积,完全基于注意力机制来建模序列中的依赖关系</strong>。这个看似激进的决策,后来被证明是那个十年中最成功的架构创新之一。</p>
 
         <p>标准的Transformer架构是一个Encoder-Decoder结构。Encoder负责将输入序列编码成连续的表示，Decoder则基于这些表示自回归地生成输出。我们逐一拆解其中的关键组件。</p>
 
-        <h4>2.1.1 Self-Attention（自注意力机制）</h4>
+        <h3>2.1.1 Self-Attention（自注意力机制）</h3>
 
         <p>Self-Attention是Transformer的核心中的核心。它的直觉是这样：对于序列中的每一个token，我们需要决定在生成它的表示时，应该"关注"序列中的哪些其他token。比如在句子"I saw a cat and it was cute"中，理解"it"这个代词时，模型需要把注意力集中在"cat"上。</p>
 
@@ -76,11 +86,63 @@ V = X · W_V      # Value: 表示当前token"要提供什么"
 
 Attention(Q,K,V) = softmax(Q · K^T / sqrt(d_k)) · V</code></pre>
 
+        <div class="math-equation" role="group" aria-label="缩放点积注意力公式">
+            <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="缩放点积注意力公式，可横向滚动">
+                <math display="block" aria-label="Attention(Q,K,V) 等于 softmax，Q 乘 K 转置再除以根号 d_k，然后乘 V">
+                    <mrow>
+                        <mtext>Attention</mtext><mo>(</mo><mi>Q</mi><mo>,</mo><mi>K</mi><mo>,</mo><mi>V</mi><mo>)</mo><mo>=</mo>
+                        <mi>softmax</mi>
+                        <mrow><mo>(</mo><mfrac><mrow><mi>Q</mi><msup><mi>K</mi><mo>⊤</mo></msup></mrow><msqrt><msub><mi>d</mi><mi>k</mi></msub></msqrt></mfrac><mo>)</mo></mrow>
+                        <mi>V</mi>
+                    </mrow>
+                </math>
+            </div>
+        </div>
+
+        <div class="math-equation" role="group" aria-label="多头注意力公式">
+            <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="多头注意力公式，可横向滚动">
+                <math display="block" aria-label="MultiHead 等于把各头输出拼接后乘 W_O；每个头是 Attention，参数为 Q 乘 W_Q、K 乘 W_K、V 乘 W_V">
+                    <mrow>
+                        <mtext>MultiHead</mtext><mo>=</mo><mtext>Concat</mtext>
+                        <mrow><mo>(</mo><msub><mtext>head</mtext><mn>1</mn></msub><mo>,</mo><mo>…</mo><mo>,</mo><msub><mtext>head</mtext><mi>h</mi></msub><mo>)</mo></mrow>
+                        <msub><mi>W</mi><mi>O</mi></msub>
+                        <mo>,</mo><mspace width="1em"/>
+                        <msub><mtext>head</mtext><mi>i</mi></msub><mo>=</mo><mtext>Attention</mtext>
+                        <mrow><mo>(</mo><mi>Q</mi><msubsup><mi>W</mi><mi>Q</mi><mi>i</mi></msubsup><mo>,</mo><mi>K</mi><msubsup><mi>W</mi><mi>K</mi><mi>i</mi></msubsup><mo>,</mo><mi>V</mi><msubsup><mi>W</mi><mi>V</mi><mi>i</mi></msubsup><mo>)</mo></mrow>
+                    </mrow>
+                </math>
+            </div>
+        </div>
+
         <p>这里有一个很重要的设计细节：除以sqrt(d_k)是为了防止内积过大导致softmax梯度消失。当d_k很大时，Q和K的点积可能数值很大，经过softmax后会集中在极少数的token上，梯度几乎为零——训练就没法继续了。这个scaling factor是Transformer数不惊人的精妙设计之一。</p>
+
+        <div class="widget" role="group" aria-label="注意力缩放因子演示">
+            <label for="scale-dk">拖动滑块改变键维度 d_k：<output id="scale-dk-out">64</output></label>
+            <input type="range" id="scale-dk" min="1" max="512" step="1" value="64">
+            <div class="readout" id="scale-out">…</div>
+            <p>假设 Q、K 各分量独立且方差为 1，则点积 q·k 的方差等于 d_k、标准差约为 √d_k；除以 √d_k 后标准差回落到 1 附近。这就是缩放因子让 softmax 输入尺度不随维度漂移的原因（推导为教学简化模型，实际权重分布未必严格满足）。</p>
+        </div>
+        <script>
+        (function () {
+            var slider = document.getElementById('scale-dk');
+            var out = document.getElementById('scale-out');
+            function render() {
+                var dk = Number(slider.value);
+                document.getElementById('scale-dk-out').textContent = String(dk);
+                var raw = Math.sqrt(dk);
+                out.textContent = 'd_k = ' + dk
+                    + '　未缩放点积标准差 ≈ √d_k = ' + raw.toFixed(2)
+                    + '　缩放后标准差 ≈ ' + (raw / Math.sqrt(dk)).toFixed(2)
+                    + '　（放大倍数 ' + (raw * raw).toFixed(0) + '×）';
+            }
+            slider.addEventListener('input', render);
+            render();
+        })();
+        </script>
 
         <p>Multi-Head Attention（多头注意力）是这个机制的扩展：我们不只做一次Self-Attention，而是并行地做h次，每次使用不同的投影矩阵，然后把所有头的输出拼接起来再做一次线性变换。这样做的好处是让模型能够在不同的表示子空间里捕捉不同类型的依赖关系——有些头可能关注语法关系，有些头关注语义关联。</p>
 
-        <h4>2.1.2 FFN（前馈神经网络层）</h4>
+        <h3>2.1.2 FFN（前馈神经网络层）</h3>
 
         <p>每个Transformer层在Self-Attention之后都有一个Feed-Forward Network（FFN）。它的结构很简单：两个线性变换夹一个非线性激活函数。标准Transformer使用的激活函数是ReLU。</p>
 
@@ -96,7 +158,7 @@ FFN(x) = W_2 · ReLU(W_1 · x + b_1) + b_2</code></pre>
             <strong>思考题：</strong> 为什么FFN的隐藏层维度通常是4×d？这个"4"是拍脑袋拍出来的吗？实际上，这个选择在原始的Transformer论文中确实没有给出严格的理论依据，更多是基于"这个大小效果不错"的经验选择。有趣的是，LLaMA 3在405B模型中将这个比例从4×调整到了约(8/3)×——我们在第5章会解释为什么。
         </div>
 
-        <h4>2.1.3 LayerNorm与残差连接</h4>
+        <h3>2.1.3 LayerNorm与残差连接</h3>
 
         <p>Transformer的另一个关键设计是Add & Norm——在Self-Attention和FFN之后，先做残差连接（Add），再做Layer Normalization（Norm）。</p>
 
@@ -113,7 +175,7 @@ y = γ · x_norm + β   # 缩放和平移</code></pre>
 
         <p>LayerNorm的重要性在于它能稳定训练过程，减少对学习率的敏感性。我们会在第4章深入讨论LLaMA为什么用RMSNorm替代了LayerNorm。</p>
 
-        <h4>2.1.4 位置编码（Positional Encoding）</h4>
+        <h3>2.1.4 位置编码（Positional Encoding）</h3>
 
         <p>Transformer的Self-Attention是一个排列不变（permutation-invariant）的操作——如果把输入序列的顺序打乱，输出也会相应打乱，但attention map本身不变。这意味着Transformer自己不知道"cat在I之后"这样的位置信息。所以我们必须在输入中注入位置信息。</p>
 
@@ -123,7 +185,7 @@ y = γ · x_norm + β   # 缩放和平移</code></pre>
             <strong>回顾总结：</strong> 标准Transformer = Embedding + Positional Encoding + N×(Self-Attention + FFN + Add & Norm)。Encoder和Decoder都遵循这个结构，但Decoder多了一个Masked Self-Attention和Cross-Attention。Encoder处理输入序列，Decoder根据Encoder的输出自回归地生成目标序列。这个架构在机器翻译、文本摘要等Seq2Seq任务上取得了巨大成功。
         </div>
 
-        <h3>2.2 Decoder-only架构的兴起</h3>
+        <h2 id="sec-2-2">2.2 Decoder-only架构的兴起</h2>
 
         <p>LLaMA和GPT系列都使用了Decoder-only架构，而不是原始的Encoder-Decoder。这个转变的背后有深刻的历史和技术原因。</p>
 
@@ -175,7 +237,7 @@ y = γ · x_norm + β   # 缩放和平移</code></pre>
             <strong>注意区分：</strong> Decoder-only和"仅使用Decoder的Transformer架构"其实有细微差别。原始Transformer的Decoder使用了Cross-Attention来关注Encoder的输出，而Decoder-only模型（如GPT和LLaMA）去掉Cross-Attention层，只保留Masked Self-Attention和FFN。所以更准确地说，LLaMA的架构是"去掉Cross-Attention的Decoder"。
         </div>
 
-        <h3>2.3 LLaMA原生解码器架构全景</h3>
+        <h2 id="sec-2-3">2.3 LLaMA原生解码器架构全景</h2>
 
         <p>现在我们来正式介绍LLaMA的架构。LLaMA使用的是Decoder-only架构，但相比原始Transformer的Decoder，LLaMA做了几项关键改进。下面这张对照表可以让差异一目了然：</p>
 
@@ -248,7 +310,45 @@ y = γ · x_norm + β   # 缩放和平移</code></pre>
 # - 无 dropout
 # - 所有子层都有残差连接</code></pre>
 
-        <h3>2.4 LLaMA系列参数配置表</h3>
+        <figure>
+            <svg viewBox="0 0 540 430" role="img" aria-labelledby="fig-llama-block-title" xmlns="http://www.w3.org/2000/svg">
+                <title id="fig-llama-block-title">LLaMA 解码器层的 Pre-Norm 数据流</title>
+                <desc>输入 x 先过 RMSNorm 再进带 RoPE 与因果掩码的自注意力，输出与 x 残差相加；再经第二个 RMSNorm 与 SwiGLU 前馈，输出与相加结果残差相加，送入下一层。</desc>
+                <defs>
+                    <marker id="fig-llama-block-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                        <path d="M0,0 L10,5 L0,10 z" fill="#7c3aed"/>
+                    </marker>
+                    <marker id="fig-llama-block-arrow2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                        <path d="M0,0 L10,5 L0,10 z" fill="#0d9488"/>
+                    </marker>
+                </defs>
+                <text x="260" y="20" font-size="13" text-anchor="middle" fill="#64748b">输入 x（隐藏维 D）</text>
+                <rect x="140" y="32" width="240" height="40" rx="10" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2"/>
+                <text x="260" y="57" font-size="14" text-anchor="middle" fill="#4c1d95">RMSNorm（Pre-Norm）</text>
+                <rect x="140" y="102" width="240" height="44" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+                <text x="260" y="129" font-size="14" text-anchor="middle" fill="#92400e">因果自注意力（RoPE + GQA）</text>
+                <circle cx="260" cy="196" r="16" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2"/>
+                <text x="260" y="202" font-size="16" text-anchor="middle" fill="#5b21b6">+</text>
+                <rect x="140" y="238" width="240" height="40" rx="10" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2"/>
+                <text x="260" y="263" font-size="14" text-anchor="middle" fill="#4c1d95">RMSNorm（Pre-Norm）</text>
+                <rect x="140" y="308" width="240" height="44" rx="10" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2"/>
+                <text x="260" y="335" font-size="14" text-anchor="middle" fill="#075985">SwiGLU 前馈网络</text>
+                <circle cx="260" cy="392" r="16" fill="#d1fae5" stroke="#0d9488" stroke-width="2"/>
+                <text x="260" y="398" font-size="16" text-anchor="middle" fill="#0f766e">+</text>
+                <line x1="260" y1="72" x2="260" y2="100" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-llama-block-arrow)"/>
+                <line x1="260" y1="146" x2="260" y2="178" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-llama-block-arrow)"/>
+                <line x1="260" y1="212" x2="260" y2="236" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-llama-block-arrow)"/>
+                <line x1="260" y1="278" x2="260" y2="306" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-llama-block-arrow)"/>
+                <line x1="260" y1="352" x2="260" y2="374" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-llama-block-arrow)"/>
+                <path d="M140,52 L80,52 L80,196 L242,196" fill="none" stroke="#0d9488" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#fig-llama-block-arrow2)"/>
+                <path d="M80,196 L80,392 L242,392" fill="none" stroke="#0d9488" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#fig-llama-block-arrow2)"/>
+                <text x="20" y="200" font-size="13" fill="#0f766e">残差</text>
+                <text x="260" y="424" font-size="12" text-anchor="middle" fill="#64748b">→ 送入下一个解码器层，重复 N 次</text>
+            </svg>
+            <figcaption><strong>图 2-1.</strong> 单个 LLaMA 解码器层的数据流：两次 Pre-Norm（先归一化再进子层），两条虚线残差把子层输入直接加到子层输出。与原始 Transformer 的 Post-Norm 相比，归一化被移到子层输入端。</figcaption>
+        </figure>
+
+        <h2 id="sec-2-4">2.4 LLaMA系列参数配置表</h2>
 
         <p>LLaMA家族每一代都有多种参数规模的版本，理解它们的配置差异对后续章节的学习至关重要。下面是各代模型的核心架构参数一览：</p>
 
@@ -353,7 +453,7 @@ y = γ · x_norm + β   # 缩放和平移</code></pre>
 
         <p>还有一个容易被忽视的变化：<strong>LLaMA 2的70B首次引入GQA</strong>，而LLaMA 3的所有规模都使用了GQA。GQA的KV头数（8）不随参数量变化——也就是说，405B模型虽然注意力头有128个，但KV投影只有8组（每组服务16个query头）。这个设计对推理效率的影响我们在第8章会深入分析。</p>
 
-        <h3>2.5 架构演进路线图</h3>
+        <h2 id="sec-2-5">2.5 架构演进路线图</h2>
 
         <p>从LLaMA 1到LLaMA 3，架构层面的演进呈现出一个清晰的路径。让我用一张路线图串联起来：</p>
 
@@ -372,7 +472,7 @@ y = γ · x_norm + β   # 缩放和平移</code></pre>
 
         <p>讲到这里我想分享一个亲身经历的"踩坑"故事。我在2023年初第一次尝试在项目中"复现"LLaMA架构时，犯了一个低级错误：我以为LLaMA用的是标准的Post-LayerNorm（这是原始Transformer的风格），结果训练一直不稳定，loss反复震荡，一度怀疑是自己的代码有问题。反复Debug了两天后，偶然读到LLaMA论文中关于Pre-RMSNorm的描述，才发现自己把Normalization的位置搞反了。修改之后训练立刻稳定下来。这个教训让我深刻理解了：<strong>在LLM架构中，组件的位置（placement）和组件本身一样重要</strong>。Pre-Norm vs Post-Norm的差异在理论上就一行代码，但对训练的稳定性有着天壤之别。</p>
 
-        <h3>2.6 与其他开源模型的架构对比</h3>
+        <h2 id="sec-2-6">2.6 与其他开源模型的架构对比</h2>
 
         <p>LLaMA的架构设计影响力巨大，但不是唯一的Decoder-only路线。让我们看看其他主流开源模型在架构上与LLaMA的异同。</p>
 
@@ -447,7 +547,7 @@ y = γ · x_norm + β   # 缩放和平移</code></pre>
             <a href="03.html">下一章 →</a>
         </div>
 
-    </div>
+    </main>
 </div>
 </div>
 </body>
