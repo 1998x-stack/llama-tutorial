@@ -9,7 +9,7 @@
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>🦙 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 LLaMA系列概述</a></li>
@@ -41,16 +41,27 @@
             <li><a href="27.html">第27章 LLaMA 4展望与MoE架构</a></li>
             <li><a href="28.html">第28章 开源LLM生态与未来趋势</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
 
-        <h2>第4章 RMSNorm归一化</h2>
+        <h1>第4章 RMSNorm归一化</h1>
+
+        <nav class="toc" aria-label="本章小节导航">
+            <strong>本章导航：</strong>
+            <a href="#sec-4-1">4.1 LayerNorm回顾</a> ·
+            <a href="#sec-4-2">4.2 提出动机</a> ·
+            <a href="#sec-4-3">4.3 数学公式与对比</a> ·
+            <a href="#sec-4-4">4.4 设计决策</a> ·
+            <a href="#sec-4-5">4.5 PyTorch实现</a> ·
+            <a href="#sec-4-6">4.6 Pre vs Post</a> ·
+            <a href="#sec-4-7">4.7 局限与思考</a>
+        </nav>
 
         <p>大家好，我是你们的讲师。这一章我们来聊一个"小而美"的组件——<strong>RMSNorm（Root Mean Square Layer Normalization）</strong>。在LLM架构中，归一化层可能看起来不如注意力机制那么"性感"，但它在训练稳定性中扮演的角色是决定性的。一个归一化方式的选择，可能就决定了你的模型能不能收敛。</p>
 
         <p>LLaMA对归一化的改造堪称"手术刀式的精准"——在LayerNorm的基础上去掉了一个看似无关紧要的均值中心化步骤，就带来了5-15%的训练加速，而且效果没有退化。这种"少即是多"的设计哲学，值得我们深入理解。</p>
 
-        <h3>4.1 LayerNorm回顾</h3>
+        <h2 id="sec-4-1">4.1 LayerNorm回顾</h2>
 
         <p>在讨论RMSNorm之前，先回顾一下Layer Normalization。LayerNorm是2016年提出的归一化技术，与BatchNorm不同，它不是对整个batch做归一化，而是对每个样本独立地做归一化。这对序列模型尤其重要——因为在NLP中每个样本（句子）的长度可能不同，BatchNorm在测试时对可变长度序列的处理很麻烦。</p>
 
@@ -77,7 +88,7 @@ y = γ · x_norm + β            # 可学习的缩放和偏移</code></pre>
 
         <p>Post-Norm在理论上更合理——因为子层的输出可能在数值范围上和输入差异很大，先归一化再相加能保证下一层的输入始终在合理的数值范围内。但实践中Post-Norm在深层网络中倾向于不稳定——梯度容易爆炸，训练需要非常精细的warmup策略。而Pre-Norm则更加"宽容"，即使层数很深、学习率较大，也能维持稳定的训练动态。</p>
 
-        <h3>4.2 RMSNorm的提出动机</h3>
+        <h2 id="sec-4-2">4.2 RMSNorm的提出动机</h2>
 
         <p>RMSNorm是2019年由Zhang和Sennrich提出的。它的核心洞察非常直接：<strong>LayerNorm中均值中心化（减去μ）这一步真的是必要的吗？</strong></p>
 
@@ -89,9 +100,35 @@ y = γ · x_norm + β            # 可学习的缩放和偏移</code></pre>
             <strong>一个有趣的类比：</strong> 想象你在调音台上混音。LayerNorm的做法是：先把所有轨道的音量拉到零平均值，再统一提升到一个标准音量。RMSNorm的做法是：不管轨道的偏移，直接调整音量到标准水平。在大多数情况下，音量的平衡比偏移更重要——RMSNorm抓住了"缩放"这个主要矛盾。
         </div>
 
-        <h3>4.3 RMSNorm数学公式与对比</h3>
+        <h2 id="sec-4-3">4.3 RMSNorm数学公式与对比</h2>
 
         <p>RMSNorm的数学表达式极其简洁：</p>
+
+        <div class="math-equation" role="group" aria-label="RMSNorm 公式">
+            <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="RMSNorm 公式，可横向滚动">
+                <math display="block" aria-label="RMS(x) 等于 d 分之一个 x 各分量平方和再加 epsilon，然后开平方；归一化后的输出等于 gamma 乘以 x 除以 RMS(x)">
+                    <mrow>
+                        <mi>RMS</mi><mo>(</mo><mi>x</mi><mo>)</mo><mo>=</mo>
+                        <msqrt><mrow><mfrac><mn>1</mn><mi>d</mi></mfrac><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>d</mi></munderover><msubsup><mi>x</mi><mi>i</mi><mn>2</mn></msubsup><mo>+</mo><mi>ε</mi></mrow></msqrt>
+                        <mo>,</mo><mspace width="1em"/>
+                        <mi>y</mi><mo>=</mo><mi>γ</mi><mo>⊙</mo><mfrac><mi>x</mi><mrow><mi>RMS</mi><mo>(</mo><mi>x</mi><mo>)</mo></mrow></mfrac>
+                    </mrow>
+                </math>
+            </div>
+        </div>
+
+        <p>作为对照，LayerNorm 先把特征向量平移到零均值，再除以标准差，最后用可学习的缩放与偏移重建：</p>
+
+        <div class="math-equation" role="group" aria-label="LayerNorm 公式">
+            <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="LayerNorm 公式，可横向滚动">
+                <math display="block" aria-label="LayerNorm 等于 gamma 乘以 x 减 mu 再除以根号下 sigma 平方加 epsilon，最后加 beta">
+                    <mrow>
+                        <mi>LN</mi><mo>(</mo><mi>x</mi><mo>)</mo><mo>=</mo>
+                        <mi>γ</mi><mo>⊙</mo><mfrac><mrow><mi>x</mi><mo>−</mo><mi>μ</mi></mrow><msqrt><mrow><msup><mi>σ</mi><mn>2</mn></msup><mo>+</mo><mi>ε</mi></mrow></msqrt></mfrac><mo>+</mo><mi>β</mi>
+                    </mrow>
+                </math>
+            </div>
+        </div>
 
         <pre><code># RMSNorm
 # 输入: x ∈ R^d
@@ -139,7 +176,7 @@ y = γ · x_norm                      # 可学习的缩放参数（无β偏移�
             <tr>
                 <td>前向加速</td>
                 <td>基线</td>
-                <td>约5-15%加速（实测数据）</td>
+                <td>约 7%–64% 加速（RMSNorm 原论文报告的范围，随任务与硬件而变）</td>
             </tr>
             <tr>
                 <td>训练稳定性</td>
@@ -153,7 +190,84 @@ y = γ · x_norm                      # 可学习的缩放参数（无β偏移�
             </tr>
         </table>
 
-        <h3>4.4 LLaMA中RMSNorm的设计决策</h3>
+        <div class="tip"><strong>来源：</strong> RMSNorm 由 Zhang 与 Sennrich 在 <a href="https://arxiv.org/abs/1910.07467">Root Mean Square Layer Normalization</a>（arXiv:1910.07467，NeurIPS 2019）中提出，论文在不同任务上报告了约 7%–64% 的运行时下降；LLaMA 采用 RMSNorm 并配合 Pre-Norm 结构，见 <a href="https://arxiv.org/abs/2302.13971">LLaMA: Open and Efficient Foundation Language Models</a>（arXiv:2302.13971，2023）。表中“加速”为原论文量级，实际部署收益取决于算子实现。
+
+        <figure>
+            <svg viewBox="0 0 620 300" role="img" aria-labelledby="fig-rms-flow-title" xmlns="http://www.w3.org/2000/svg">
+                <title id="fig-rms-flow-title">LayerNorm 与 RMSNorm 的计算流程对比</title>
+                <desc>上排 LayerNorm 依次经过减去均值、除以标准差、仿射变换三步；下排 RMSNorm 省略了减均值与偏移，只保留除以均方根和缩放两步，被省略的步骤用虚线框表示。</desc>
+                <defs>
+                    <marker id="fig-rms-flow-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                        <path d="M0,0 L10,5 L0,10 z" fill="#7c3aed"/>
+                    </marker>
+                </defs>
+                <text x="10" y="52" font-size="14" font-weight="bold" fill="#5b21b6">LayerNorm</text>
+                <rect x="14" y="62" width="90" height="44" rx="10" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2"/>
+                <text x="59" y="89" font-size="15" text-anchor="middle" fill="#4c1d95">x</text>
+                <rect x="130" y="62" width="90" height="44" rx="10" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2"/>
+                <text x="175" y="89" font-size="13" text-anchor="middle" fill="#4c1d95">减 μ</text>
+                <rect x="246" y="62" width="90" height="44" rx="10" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2"/>
+                <text x="291" y="89" font-size="13" text-anchor="middle" fill="#4c1d95">除 σ</text>
+                <rect x="362" y="62" width="90" height="44" rx="10" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2"/>
+                <text x="407" y="89" font-size="13" text-anchor="middle" fill="#4c1d95">×γ + β</text>
+                <rect x="478" y="62" width="90" height="44" rx="10" fill="#d1fae5" stroke="#0d9488" stroke-width="2"/>
+                <text x="523" y="89" font-size="15" text-anchor="middle" fill="#0f766e">y</text>
+                <line x1="104" y1="84" x2="128" y2="84" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-rms-flow-arrow)"/>
+                <line x1="220" y1="84" x2="244" y2="84" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-rms-flow-arrow)"/>
+                <line x1="336" y1="84" x2="360" y2="84" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-rms-flow-arrow)"/>
+                <line x1="452" y1="84" x2="476" y2="84" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-rms-flow-arrow)"/>
+                <text x="10" y="192" font-size="14" font-weight="bold" fill="#0f766e">RMSNorm</text>
+                <rect x="14" y="202" width="90" height="44" rx="10" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2"/>
+                <text x="59" y="229" font-size="15" text-anchor="middle" fill="#4c1d95">x</text>
+                <rect x="130" y="202" width="90" height="44" rx="10" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6 4"/>
+                <text x="175" y="229" font-size="13" text-anchor="middle" fill="#94a3b8">减 μ ✗</text>
+                <rect x="246" y="202" width="90" height="44" rx="10" fill="#ccfbf1" stroke="#0d9488" stroke-width="2"/>
+                <text x="291" y="229" font-size="13" text-anchor="middle" fill="#0f766e">除 RMS</text>
+                <rect x="362" y="202" width="90" height="44" rx="10" fill="#ccfbf1" stroke="#0d9488" stroke-width="2"/>
+                <text x="407" y="229" font-size="13" text-anchor="middle" fill="#0f766e">×γ</text>
+                <rect x="478" y="202" width="90" height="44" rx="10" fill="#d1fae5" stroke="#0d9488" stroke-width="2"/>
+                <text x="523" y="229" font-size="15" text-anchor="middle" fill="#0f766e">y</text>
+                <line x1="104" y1="224" x2="128" y2="224" stroke="#94a3b8" stroke-width="2" stroke-dasharray="4 4"/>
+                <line x1="220" y1="224" x2="244" y2="224" stroke="#0d9488" stroke-width="2" marker-end="url(#fig-rms-flow-arrow)"/>
+                <line x1="336" y1="224" x2="360" y2="224" stroke="#0d9488" stroke-width="2" marker-end="url(#fig-rms-flow-arrow)"/>
+                <line x1="452" y1="224" x2="476" y2="224" stroke="#0d9488" stroke-width="2" marker-end="url(#fig-rms-flow-arrow)"/>
+            </svg>
+            <figcaption><strong>图 4-1.</strong> 两条归一化流水线的拓扑对比。RMSNorm 直接省去了虚线所示的减均值环节，因此既不需要均值统计也不需要偏移参数 β，这正是它前向更快、参数更少的结构性原因。</figcaption>
+        </figure>
+
+        <div class="widget" role="group" aria-label="LayerNorm 与 RMSNorm 输出对比">
+            <label for="rms-v1">调整输入向量 x 的三个分量（范围 −3 到 3，γ=1）：</label>
+            <input type="range" id="rms-v1" min="-3" max="3" step="0.1" value="1.2">
+            <input type="range" id="rms-v2" min="-3" max="3" step="0.1" value="0.4">
+            <input type="range" id="rms-v3" min="-3" max="3" step="0.1" value="2.1">
+            <div class="readout" id="rms-out">…</div>
+            <p>LayerNorm 减去均值后再缩放，输出均值恒为 0；RMSNorm 只除以均方根，输出均值一般不为 0、但能保留向量原有的方向与偏移。注意 RMSNorm 因为不减均值，对整体平移 x → x + c 是<strong>不敏感</strong>的，而 LayerNorm 会把两者归一化到几乎相同的结果。</p>
+        </div>
+        <script>
+        (function () {
+            var ids = ['rms-v1', 'rms-v2', 'rms-v3'];
+            var inputs = ids.map(function (id) { return document.getElementById(id); });
+            var out = document.getElementById('rms-out');
+            function fmt(v) { return v.toFixed(2); }
+            function render() {
+                var x = inputs.map(function (i) { return Number(i.value); });
+                var d = x.length;
+                var mean = x.reduce(function (a, b) { return a + b; }, 0) / d;
+                var variance = x.reduce(function (a, b) { return a + Math.pow(b - mean, 2); }, 0) / d;
+                var rms = Math.sqrt(x.reduce(function (a, b) { return a + b * b; }, 0) / d);
+                var ln = x.map(function (v) { return fmt((v - mean) / Math.sqrt(variance)); });
+                var rn = x.map(function (v) { return fmt(v / rms); });
+                out.textContent = 'x = [' + x.map(fmt).join(', ') + ']　μ = ' + fmt(mean)
+                    + '　σ = ' + fmt(Math.sqrt(variance)) + '　RMS = ' + fmt(rms)
+                    + '　|　LayerNorm → [' + ln.join(', ') + ']'
+                    + '　RMSNorm → [' + rn.join(', ') + ']';
+            }
+            inputs.forEach(function (i) { i.addEventListener('input', render); });
+            render();
+        })();
+        </script>
+
+        <h2 id="sec-4-4">4.4 LLaMA中RMSNorm的设计决策</h2>
 
         <p>LLaMA全系列都使用了<strong>Pre-RMSNorm</strong>——即RMSNorm放在每个子层（Self-Attention或FFN）的输入之前，而不是之后。这个"Pre"的位置选择和"RMS"的选择是同等重要的设计决策。</p>
 
@@ -190,7 +304,7 @@ y = γ · x_norm                      # 可学习的缩放参数（无β偏移�
 # 2. 残差连接直接将未归一化的输入加到子层输出上
 # 3. RMSNorm 无均值中心化，无偏移参数β</code></pre>
 
-        <h3>4.5 RMSNorm的PyTorch实现</h3>
+        <h2 id="sec-4-5">4.5 RMSNorm的PyTorch实现</h2>
 
         <p>RMSNorm的实现真的只有几行代码：</p>
 
@@ -228,7 +342,7 @@ out = rms_norm(x)                     # 形状不变: (2, 1024, 4096)
             <strong>工程小技巧：</strong> 如果你在实现RMSNorm时遇到数值稳定性问题（比如训练早期loss spiking），可以试试增加eps的数值。标准设置是1e-6，但如果使用FP16/FP8混合精度训练，可以适当增大到1e-5。另外，有些框架（如xFormers）对RMSNorm做了fused kernel优化，可以进一步减少kernel launch的开销。如果追求极致性能，建议使用这些优化后的实现而不是自行编写。
         </div>
 
-        <h3>4.6 Pre-RMSNorm vs Post-RMSNorm的训练稳定性对比</h3>
+        <h2 id="sec-4-6">4.6 Pre-RMSNorm vs Post-RMSNorm的训练稳定性对比</h2>
 
         <p>我们通过一个简化的实验设计来理解Pre-Norm和Post-Norm在训练稳定性上的差异。假设你要训练一个32层的Transformer，只改变归一化的位置，其他超参数完全相同：</p>
 
@@ -269,7 +383,7 @@ out = rms_norm(x)                     # 形状不变: (2, 1024, 4096)
 
         <p>讲一个真实的故事。2023年底我参与了一个小型LLM训练项目的调优，用的也是Pre-RMSNorm架构（受LLaMA启发）。有一轮训练在运行了5000步后突然出现了loss spike——从3.2跳到了9.8。开始以为是代码bug，排查了三天后发现问题出在数据上：一个经过特殊编码的二进制数据被错误地当作文本输入了，导致某个batch的激活值异常。这个batch经过Pre-RMSNorm后，RMS值被异常拉高，但归一化后的输出仍然在合理范围内，所以模型在几十步内就恢复了过来。如果换做Post-Norm，这个异常可能直接让loss爆炸到无法恢复。这次经历让我亲身感受到了Pre-Norm的"容错性"在实际训练中的价值。</p>
 
-        <h3>4.7 RMSNorm的局限与思考</h3>
+        <h2 id="sec-4-7">4.7 RMSNorm的局限与思考</h2>
 
         <p>RMSNorm并非没有缺点。它的主要局限如下：</p>
 
@@ -289,7 +403,7 @@ out = rms_norm(x)                     # 形状不变: (2, 1024, 4096)
             <a href="05.html">下一章 →</a>
         </div>
 
-    </div>
+    </main>
 </div>
 </div>
 </body>
