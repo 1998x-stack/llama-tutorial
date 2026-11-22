@@ -9,7 +9,7 @@
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>🦙 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 LLaMA系列概述</a></li>
@@ -41,16 +41,27 @@
             <li><a href="27.html" class="active">第27章 LLaMA 4展望与MoE架构</a></li>
             <li><a href="28.html">第28章 开源LLM生态与未来趋势</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
 
-        <h2>第27章 LLaMA 4展望与MoE架构</h2>
+        <h1>第27章 LLaMA 4展望与MoE架构</h1>
+
+        <nav class="toc" aria-label="本章小节导航">
+            <strong>本章导航：</strong>
+            <a href="#sec-27-1">27.1 已知信息</a> ·
+            <a href="#sec-27-2">27.2 MoE原理</a> ·
+            <a href="#sec-27-3">27.3 为什么是未来</a> ·
+            <a href="#sec-27-4">27.4 成功案例</a> ·
+            <a href="#sec-27-5">27.5 关键挑战</a> ·
+            <a href="#sec-27-6">27.6 LLaMA 4展望</a> ·
+            <a href="#sec-27-7">27.7 稠密 vs MoE</a>
+        </nav>
 
         <p>大家好。从第1章开始，我们走过了LLaMA系列的完整演进之路——LLaMA 1的开疆拓土、LLaMA 2的对话对齐、LLaMA 3的全面升级、LLaMA 3.2的边缘探索。每一代都带来了新的架构创新和工程突破。那么问题来了：<strong>LLaMA 4会是什么样？</strong></p>
 
         <p>截至2026年中，Meta官方尚未正式发布LLaMA 4。但各种线索——论文里埋下的伏笔、开源社区的代码提交、Meta研究团队的公开演讲——都指向了一个方向：LLaMA 4将会是LLaMA系列中变化最大的一次升级，而其中最核心的技术变革，可能就是<strong>混合专家模型（Mixture of Experts, MoE）</strong>。这一章我们来深入分析MoE架构的原理，以及为什么它很可能成为LLaMA 4的核心技术。</p>
 
-        <h3>27.1 LLaMA 4已知信息汇总</h3>
+        <h2 id="sec-27-1">27.1 LLaMA 4已知信息汇总</h2>
 
         <p>让我先汇总一下截至2026年中的"已知信息"。之所以打引号，是因为这些信息大多来自非官方渠道，有一部分是推测。我把它们分成三个可信度等级：<strong>确认级</strong>（Meta官方信号）、<strong>高可信</strong>（论文/代码/知情人士）、<strong>传闻级</strong>（社区推测）。</p>
 
@@ -96,13 +107,28 @@
             <strong>一个值得注意的细节：</strong> Meta在2025年Q4财报中披露，AI基础设施的资本支出达到380亿美元，其中绝大部分用于构建下一代LLM训练集群。这个数字是2024年的两倍多。如此巨大的投入，不可能只是为了做LLaMA 3的简单升级版。LLaMA 4一定在架构层面有根本性的变化，而MoE是最合理的解释。
         </div>
 
-        <h3>27.2 混合专家模型（MoE）原理</h3>
+        <h2 id="sec-27-2">27.2 混合专家模型（MoE）原理</h2>
 
         <p>在开始分析LLaMA 4之前，我们需要先把MoE这个技术吃透。MoE并不是一个新概念——它最早可以追溯到1991年Robert Jacobs和Geoffrey Hinton等人的论文。但在大模型时代，MoE被赋予了全新的生命力。</p>
 
         <p>MoE的核心思想可以用一句话概括：<strong>每个输入只激活模型的一小部分参数，而不是全部。</strong>想象一下，如果你有一个由100个专家组成的团队来处理各种问题，传统方法（稠密模型）会让100个专家都参与每个问题的讨论，效率低下。而MoE的做法是：先由一个"路由系统"判断这个问题属于哪个领域，然后只让相关的少数几个专家来处理。</p>
 
         <p>具体到Transformer架构中，MoE通常应用在FFN（前馈神经网络）层。标准的Transformer FFN层是这样一个计算：每个token都经过同一个MLP。而在MoE Transformer中，FFN层被替换为一组"专家"（expert），每个专家是一个独立的FFN。路由网络（router）根据token的表示，从中选择top-k个专家来激活。</p>
+
+        <div class="math-equation" role="group" aria-label="MoE 输出公式">
+            <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="MoE 输出公式，可横向滚动">
+                <math display="block" aria-label="MoE 输出 y 等于，对选中的 top-k 专家求和，g_i(x) 乘 E_i(x)；其中 g(x) 是路由线性层输出的 softmax">
+                    <mrow>
+                        <mi>y</mi><mo>=</mo>
+                        <munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mtext>TopK</mtext></mrow></munder>
+                        <msub><mi>g</mi><mi>i</mi></msub><mo>(</mo><mi>x</mi><mo>)</mo>
+                        <msub><mi>E</mi><mi>i</mi></msub><mo>(</mo><mi>x</mi><mo>)</mo>
+                        <mo>,</mo><mspace width="1em"/>
+                        <mi>g</mi><mo>(</mo><mi>x</mi><mo>)</mo><mo>=</mo><mi>softmax</mi><mo>(</mo><msub><mi>W</mi><mi>r</mi></msub><mi>x</mi><mo>)</mo>
+                    </mrow>
+                </math>
+            </div>
+        </div>
 
         <pre><code># MoE层的简化实现
 
@@ -155,7 +181,72 @@ class MoELayer(nn.Module):
 
         <p>这个实现虽然可以工作，但效率很低（有循环）。实际工程中会用批量矩阵乘法和分组操作来并行化。上面的代码只是为了帮助理解MoE的计算流程。</p>
 
-        <h3>27.3 MoE为什么是大模型的未来</h3>
+        <figure>
+            <svg viewBox="0 0 620 320" role="img" aria-labelledby="fig-moe-title" xmlns="http://www.w3.org/2000/svg">
+                <title id="fig-moe-title">MoE 层的路由与稀疏激活</title>
+                <desc>一个 token 的表示先送入路由网络得到对各专家的分数，只选分数最高的 top-k 个专家（图中为 2 个）分别计算，最后按门控权重加权求和得到输出。</desc>
+                <defs>
+                    <marker id="fig-moe-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                        <path d="M0,0 L10,5 L0,10 z" fill="#7c3aed"/>
+                    </marker>
+                    <marker id="fig-moe-arrow2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                        <path d="M0,0 L10,5 L0,10 z" fill="#0d9488"/>
+                    </marker>
+                </defs>
+                <rect x="20" y="138" width="80" height="44" rx="10" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2"/>
+                <text x="60" y="166" font-size="14" text-anchor="middle" fill="#4c1d95">token x</text>
+                <rect x="150" y="138" width="110" height="44" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+                <text x="205" y="166" font-size="13" text-anchor="middle" fill="#92400e">Router（W_r）</text>
+                <rect x="330" y="24" width="130" height="40" rx="10" fill="#ccfbf1" stroke="#0d9488" stroke-width="2"/>
+                <text x="395" y="49" font-size="13" text-anchor="middle" fill="#0f766e">Expert 3 ✓</text>
+                <rect x="330" y="84" width="130" height="40" rx="10" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6 4"/>
+                <text x="395" y="109" font-size="13" text-anchor="middle" fill="#94a3b8">Expert 1 ✗</text>
+                <rect x="330" y="150" width="130" height="40" rx="10" fill="#ccfbf1" stroke="#0d9488" stroke-width="2"/>
+                <text x="395" y="175" font-size="13" text-anchor="middle" fill="#0f766e">Expert 6 ✓</text>
+                <rect x="330" y="216" width="130" height="40" rx="10" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6 4"/>
+                <text x="395" y="241" font-size="13" text-anchor="middle" fill="#94a3b8">Expert 8 ✗</text>
+                <rect x="510" y="138" width="90" height="44" rx="10" fill="#d1fae5" stroke="#0d9488" stroke-width="2"/>
+                <text x="555" y="166" font-size="14" text-anchor="middle" fill="#0f766e">输出 y</text>
+                <line x1="100" y1="160" x2="148" y2="160" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-moe-arrow)"/>
+                <line x1="260" y1="150" x2="327" y2="48" stroke="#0d9488" stroke-width="2" marker-end="url(#fig-moe-arrow2)"/>
+                <line x1="260" y1="160" x2="327" y2="172" stroke="#0d9488" stroke-width="2" marker-end="url(#fig-moe-arrow2)"/>
+                <line x1="460" y1="44" x2="507" y2="150" stroke="#0d9488" stroke-width="2" marker-end="url(#fig-moe-arrow2)"/>
+                <line x1="460" y1="170" x2="507" y2="166" stroke="#0d9488" stroke-width="2" marker-end="url(#fig-moe-arrow2)"/>
+                <text x="300" y="300" font-size="12" text-anchor="middle" fill="#64748b">虚线 = 未被选中的专家（不参与本次前向），本例 top-k = 2</text>
+            </svg>
+            <figcaption><strong>图 27-1.</strong> MoE 的稀疏激活：路由网络给出各专家分数，只有 top-k 个专家被真正计算，其余专家（虚线框）在这次前向中完全跳过。因此 MoE 的<em>总参数</em>很大，但每个 token 的<em>计算量</em>只与 k 有关。</figcaption>
+        </figure>
+
+
+        <div class="widget" role="group" aria-label="MoE 激活稀疏度演示">
+            <label for="moe-n">专家总数 N：<output id="moe-n-out">8</output>　·　每 token 激活专家数 k：<output id="moe-k-out">2</output></label>
+            <input type="range" id="moe-n" min="4" max="64" step="1" value="8">
+            <input type="range" id="moe-k" min="1" max="4" step="1" value="2">
+            <div class="readout" id="moe-out">…</div>
+            <p>若每个专家都是与稠密 FFN 同规模的子网，则 MoE 的 FFN <strong>总参数</strong>约为稠密 FFN 的 N 倍，而每个 token 实际参与的专家只占 k/N。这就是MoE的“大参数、小计算”特性（未计入路由网络的微小开销，为教学示意）。</p>
+        </div>
+        <script>
+        (function () {
+            var nS = document.getElementById('moe-n');
+            var kS = document.getElementById('moe-k');
+            var out = document.getElementById('moe-out');
+            function render() {
+                var n = Number(nS.value), k = Number(kS.value);
+                if (k > n) { k = n; kS.value = String(k); }
+                document.getElementById('moe-n-out').textContent = String(n);
+                document.getElementById('moe-k-out').textContent = String(k);
+                out.textContent = 'N = ' + n + '，k = ' + k
+                    + '　总 FFN 参数 ≈ 稠密 FFN 的 ' + n + ' 倍'
+                    + '　每 token 激活比例 k/N = ' + (k / n).toFixed(3)
+                    + '（' + (100 * k / n).toFixed(1) + '%）';
+            }
+            nS.addEventListener('input', render);
+            kS.addEventListener('input', render);
+            render();
+        })();
+        </script>
+
+        <h2 id="sec-27-3">27.3 MoE为什么是大模型的未来</h2>
 
         <p>你可能已经发现了MoE的优雅之处：<strong>它把"总参数量"和"推理计算量"解耦了。</strong>在一个8专家的MoE模型中，总参数量是稠密模型的8倍，但因为每个token只激活2个专家，所以推理计算量只相当于稠密模型的约1/4（考虑到路由网络的额外开销）。</p>
 
@@ -207,19 +298,19 @@ class MoELayer(nn.Module):
             </tr>
         </table>
 
-        <h3>27.4 MoE的成功案例</h3>
+        <h2 id="sec-27-4">27.4 MoE的成功案例</h2>
 
-        <p>在LLaMA 4之前，MoE已经在多个成功的开源模型中得到了验证。我们来分析两个最具代表性的案例。</p>
+        <p>在LLaMA 4之前，MoE已经在多个成功的开源模型中得到了验证。现代稀疏 MoE 的奠基工作可追溯到 Shazeer 等人的 <a href="https://arxiv.org/abs/1701.06538">Outrageously Large Neural Networks</a>（arXiv:1701.06538，2017）；我们来分析两个最具代表性的案例。</p>
 
-        <p><strong>Mixtral 8x7B（Mistral AI, 2023.12）：</strong> Mixtral 8x7B是MoE在小规模应用上的标杆之作。它把7B的稠密LLaMA架构复制了8份作为专家，加上路由网络，总参数约47B。每个token激活2个专家，推理计算量约12.9B参数的稠密模型。在Mistral的测评中，Mixtral 8x7B在大部分基准上超越了LLaMA 2 70B，而推理速度是后者的数倍。这个案例证明了"小专家+多专家"模式的威力。</p>
+        <p><strong>Mixtral 8x7B（Mistral AI, 2023.12）：</strong> Mixtral（<a href="https://arxiv.org/abs/2401.04088">Jiang 等，arXiv:2401.04088</a>）是MoE在小规模应用上的标杆之作。它把7B的稠密LLaMA架构复制了8份作为专家，加上路由网络，总参数约47B。每个token激活2个专家，推理计算量约12.9B参数的稠密模型（均引自 Mixtral 论文）。在Mistral的测评中，Mixtral 8x7B在大部分基准上超越了LLaMA 2 70B，而推理速度是后者的数倍。这个案例证明了"小专家+多专家"模式的威力。</p>
 
-        <p><strong>DeepSeek MoE（2024.01）：</strong> DeepSeek在MoE上走出了自己的创新路线。他们提出了两个关键改进：一是"细粒度专家分割"（fine-grained expert segmentation），把标准FFN拆成更小的专家片段，增加专家的多样性；二是"共享专家隔离"（shared expert isolation），把一些通用的知识（如语法、句法）放到专门的共享专家中，减少路由的负担。DeepSeek MoE 16B在性能上达到了LLaMA 2 7B的2倍，而推理速度几乎相同。</p>
+        <p><strong>DeepSeek MoE（2024.01）：</strong> DeepSeek在MoE上走出了自己的创新路线（<a href="https://arxiv.org/abs/2401.06066">DeepSeekMoE，arXiv:2401.06066</a>）。他们提出了两个关键改进：一是"细粒度专家分割"（fine-grained expert segmentation），把标准FFN拆成更小的专家片段，增加专家的多样性；二是"共享专家隔离"（shared expert isolation），把一些通用的知识（如语法、句法）放到专门的共享专家中，减少路由的负担。</p>
 
         <div class="tip">
-            <strong>技术洞察：</strong> 我研究DeepSeek MoE的设计时有一个有趣的发现。他们的路由系统复用了token的hidden state作为路由信号，而不是像标准做法那样使用额外的路由网络参数。这个设计看似简单，但其实有两个深刻的好处：一是减少了参数量（路由网络不是"额外"的），二是路由信号与模型的主干计算保持了语义一致性。从实验结果看，这种做法在保持路由质量的同时，减少了约15%的路由计算开销。
+            <strong>技术洞察：</strong> 我研究DeepSeek MoE的设计时有一个有趣的发现。他们的路由系统复用了token的hidden state作为路由信号，而不是像标准做法那样使用额外的路由网络参数。这个设计看似简单，但其实有两个深刻的好处：一是减少了参数量（路由网络不是"额外"的），二是路由信号与模型的主干计算保持了语义一致性。从实验结果看，这种做法在保持路由质量的同时，减少了路由计算开销。<strong>注：</strong>具体百分比取决于实现与硬件，此处<strong>不作定量引用</strong>（教学示意）。
         </div>
 
-        <h3>27.5 MoE的关键挑战</h3>
+        <h2 id="sec-27-5">27.5 MoE的关键挑战</h2>
 
         <p>MoE虽然优势明显，但也引入了几个棘手的工程挑战。如果这些挑战没有被妥善解决，MoE模型的效果可能还不如同等计算量的稠密模型。</p>
 
@@ -262,7 +353,7 @@ def load_balancing_loss(router_probs, top_k_indices, num_experts):
             <strong>踩坑实录：</strong> 2024年初我用MoE架构做了一个文本分类的实验。模型使用了16个专家，top-2路由。训练时Loss下降正常，精度也不错。但推理时发现一个问题：有些输入样本的推理时间比平均值高出5倍。排查后发现，某些特殊token（比如罕见字符）的路由分数在所有专家上都非常接近，导致路由网络频繁切换top-2的选择。因为不同的token被路由到了不同的GPU组合，缓存刷新和通信重新配置带来了额外的延迟。解决方案是在路由网络中加入了一个"稳定性正则化"项，惩罚相邻token的专家选择变化。这个教训告诉我们：MoE的训练和推理之间存在很多微妙差异，在训练时表现良好的路由策略在推理时可能暴露出性能问题。
         </div>
 
-        <h3>27.6 LLaMA 4展望</h3>
+        <h2 id="sec-27-6">27.6 LLaMA 4展望</h2>
 
         <p>综合MoE的技术趋势和Meta的战略方向，我对LLaMA 4有以下几个预测：</p>
 
@@ -278,7 +369,7 @@ def load_balancing_loss(router_probs, top_k_indices, num_experts):
 
         <p>当然，LLaMA 4也面临着不小的不确定性。MoE的训练复杂度远高于稠密模型，Meta是否有足够的工程经验来驾驭这种复杂度是个问号。此外，MoE模型在稀疏激活下的推理行为（特别是长上下文场景下的稳定性）也需要时间和数据来验证。但总的来说，我对LLaMA 4持乐观态度——Meta在LLaMA 1-3中积累的工程能力给了他们挑战MoE的底气。</p>
 
-        <h3>27.7 稠密模型 vs MoE的未来</h3>
+        <h2 id="sec-27-7">27.7 稠密模型 vs MoE的未来</h2>
 
         <p>最后，我想和你聊聊一个更深层的问题：MoE最终会完全取代稠密模型吗？</p>
 
@@ -298,7 +389,7 @@ def load_balancing_loss(router_probs, top_k_indices, num_experts):
             <a href="28.html">下一章 →</a>
         </div>
 
-    </div>
+    </main>
 </div>
 </div>
 </body>
