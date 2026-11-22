@@ -9,7 +9,7 @@
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>🦙 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 LLaMA系列概述</a></li>
@@ -41,10 +41,21 @@
             <li><a href="27.html">第27章 LLaMA 4展望与MoE架构</a></li>
             <li><a href="28.html">第28章 开源LLM生态与未来趋势</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
 
-        <h2>第8章 GQA分组查询注意力</h2>
+        <h1>第8章 GQA分组查询注意力</h1>
+
+        <nav class="toc" aria-label="本章小节导航">
+            <strong>本章导航：</strong>
+            <a href="#sec-8-1">8.1 MHA回顾</a> ·
+            <a href="#sec-8-2">8.2 MQA</a> ·
+            <a href="#sec-8-3">8.3 GQA中间方案</a> ·
+            <a href="#sec-8-4">8.4 数学实现</a> ·
+            <a href="#sec-8-5">8.5 实际收益</a> ·
+            <a href="#sec-8-6">8.6 训练 vs 推理</a> ·
+            <a href="#sec-8-7">8.7 配置演变</a>
+        </nav>
 
         <p>上一章我们聊了缩放定律——知道了"给大模型更多数据"比"把模型做大"更划算。但模型一旦大起来，推理阶段就有一个绕不过去的资源黑洞：<strong>KV Cache</strong>。你可能已经体验过这种情况：一个70B模型跑推理，batch size稍微开大一点，显存就直接爆了。问题出在哪？大部分显存都被注意力机制的KV Cache吃掉了。</p>
 
@@ -54,7 +65,7 @@
             <strong>为什么GQA值得花一整章来讲？</strong> 因为它不是那种"锦上添花"的优化——对于70B以上的大模型，GQA能直接让推理吞吐量提升30%-50%，同时几乎不损失模型质量。在LLaMA全线采用GQA之后，Mistral、Qwen、DeepSeek等主流开源模型也纷纷跟进。可以说，GQA已经成为现代大模型的标配组件。
         </div>
 
-        <h3>8.1 MHA回顾：每个头都要自己的KV</h3>
+        <h2 id="sec-8-1">8.1 MHA回顾：每个头都要自己的KV</h2>
 
         <p>在复习GQA之前，让我们先快速回顾一下标准多头注意力（MHA）中KV Cache是怎么产生的。如果你对这部分很熟悉，可以跳过直接看8.2节，但我建议你还是扫一眼——因为理解GQA的关键在于搞清楚"KV Cache到底怎么吃掉显存的"。</p>
 
@@ -86,7 +97,7 @@
             <strong>直觉类比：</strong> 想象一个大型图书馆有多个阅览室。在MHA中，每个阅览室（注意力头）都有自己独立的档案室（KV投影），每个档案室存一套完整的图书副本。这样当然查询效率高，但占地太大了。GQA的做法是：相邻的几个阅览室共享同一个档案室——找书的时候，不同的阅览室可以借阅同一套资料，但各自做不同的笔记（Query单独投影）。
         </div>
 
-        <h3>8.2 MQA：一个极端的方案</h3>
+        <h2 id="sec-8-2">8.2 MQA：一个极端的方案</h2>
 
         <p>在GQA出现之前，一个更激进的方案已经被提出了——<strong>MQA（Multi-Query Attention）</strong>。MQA的思路非常暴力：所有注意力头共享同一个Key投影和同一个Value投影，每个头只保留自己的Query投影。也就是说，无论有多少个头，KV只有一份。</p>
 
@@ -98,11 +109,41 @@
             <strong>一点历史冷知识：</strong> MQA最早是2019年由Google在《Fast Transformer Decoding: One Write-Head Is All You Need》论文中提出的。这篇论文的影响力在当时很有限，因为2019年大家还在用小模型，KV Cache不是瓶颈。但到了LLaMA 2时代，随着模型规模膨胀到70B、上下文长度扩展到4K以上，MQA的这个"古老"思想突然变得极具价值。为什么MQA没有直接流行起来？原因很简单——质量损失太大。工业界需要的是一个"既要又要"的方案，而这正是GQA的舞台。
         </div>
 
-        <h3>8.3 GQA：两全其美的中间方案</h3>
+        <h2 id="sec-8-3">8.3 GQA：两全其美的中间方案</h2>
 
-        <p>GQA由Google在2023年的论文《GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints》中提出，核心思想可以用一句话概括：<strong>把查询头分成G组，每组共享一对KV头。</strong></p>
+        <p>GQA由Google在2023年的论文<a href="https://arxiv.org/abs/2305.13245"><em>《GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints》</em></a>（Ainslie 等，arXiv:2305.13245）中提出，核心思想可以用一句话概括：<strong>把查询头分成G组，每组共享一对KV头。</strong></p>
 
         <p>当G=1时，GQA退化为MQA（所有头共享一组KV）。当G=H时，GQA等价于MHA（每个头有自己的KV）。所以GQA实际上是MHA和MQA的一个可调节的中间方案。通过调整组数G，我们可以在"推理效率"和"模型质量"之间找到最佳平衡点。</p>
+
+        <figure>
+            <svg viewBox="0 0 640 300" role="img" aria-labelledby="fig-gqa-title" xmlns="http://www.w3.org/2000/svg">
+                <title id="fig-gqa-title">MHA、MQA 与 GQA 的查询/KV 头连接方式</title>
+                <desc>MHA 中每个查询头都有自己的一对 KV；MQA 中所有查询头共事一对 KV；GQA 把查询头分成两组，每组共享一对 KV。</desc>
+                <text x="110" y="26" font-size="14" font-weight="bold" text-anchor="middle" fill="#4c1d95">MHA（G=H）</text>
+                <text x="320" y="26" font-size="14" font-weight="bold" text-anchor="middle" fill="#4c1d95">MQA（G=1）</text>
+                <text x="530" y="26" font-size="14" font-weight="bold" text-anchor="middle" fill="#4c1d95">GQA（1&lt;G&lt;H）</text>
+                <g fill="#ede9fe" stroke="#8b5cf6" stroke-width="2">
+                  <circle cx="44" cy="90" r="14"/><circle cx="88" cy="90" r="14"/><circle cx="132" cy="90" r="14"/><circle cx="176" cy="90" r="14"/>
+                  <circle cx="254" cy="90" r="14"/><circle cx="298" cy="90" r="14"/><circle cx="342" cy="90" r="14"/><circle cx="386" cy="90" r="14"/>
+                  <circle cx="464" cy="90" r="14"/><circle cx="508" cy="90" r="14"/><circle cx="552" cy="90" r="14"/><circle cx="596" cy="90" r="14"/>
+                </g>
+                <g stroke="#94a3b8" stroke-width="1.5">
+                  <line x1="44" y1="104" x2="44" y2="204"/><line x1="88" y1="104" x2="88" y2="204"/><line x1="132" y1="104" x2="132" y2="204"/><line x1="176" y1="104" x2="176" y2="204"/>
+                  <line x1="254" y1="104" x2="320" y2="204"/><line x1="298" y1="104" x2="320" y2="204"/><line x1="342" y1="104" x2="320" y2="204"/><line x1="386" y1="104" x2="320" y2="204"/>
+                  <line x1="464" y1="104" x2="486" y2="204"/><line x1="508" y1="104" x2="486" y2="204"/><line x1="552" y1="104" x2="574" y2="204"/><line x1="596" y1="104" x2="574" y2="204"/>
+                </g>
+                <g fill="#ccfbf1" stroke="#0d9488" stroke-width="2">
+                  <rect x="31" y="204" width="26" height="26" rx="6"/><rect x="75" y="204" width="26" height="26" rx="6"/><rect x="119" y="204" width="26" height="26" rx="6"/><rect x="163" y="204" width="26" height="26" rx="6"/>
+                  <rect x="307" y="204" width="26" height="26" rx="6"/>
+                  <rect x="473" y="204" width="26" height="26" rx="6"/><rect x="561" y="204" width="26" height="26" rx="6"/>
+                </g>
+                <text x="110" y="248" font-size="13" text-anchor="middle" fill="#475569">4 对 KV / 4 头</text>
+                <text x="320" y="248" font-size="13" text-anchor="middle" fill="#475569">1 对 KV / 4 头</text>
+                <text x="530" y="248" font-size="13" text-anchor="middle" fill="#475569">2 对 KV / 4 头</text>
+                <text x="110" y="278" font-size="12" text-anchor="middle" fill="#64748b">圆形 = 查询头，方形 = 共享的一对 KV 头</text>
+            </svg>
+            <figcaption><strong>图 8-1.</strong> 三种注意力布局的连接拓扑。MHA 每个查询头独占 KV，KV Cache 最大；MQA 全部共事一对 KV，缓存最小但质量损失明显；GQA 用中间的分组数 G 在两者之间连续插值，LLaMA-2/3 多数型号取 G=8。</figcaption>
+        </figure>
 
         <p>那么对于LLaMA系列来说，G取多少最合适呢？我们来看看各代模型的选择：</p>
 
@@ -185,9 +226,24 @@
             <strong>一个关键观察：</strong> KV头数固定为8，而查询头数从32（8B）增长到128（405B），也就意味着每组包含的查询头数从4个增长到16个。这说明GQA的"共享密度"在更大模型中反而更高——大模型有更多的参数冗余，对KV共享的容忍度更大。这也符合我们的直觉：模型越大，各注意力头的冗余度越高，共享KV的代价越小。
         </div>
 
-        <h3>8.4 GQA的数学实现</h3>
+        <h2 id="sec-8-4">8.4 GQA的数学实现</h2>
 
         <p>下面让我们来看GQA的数学形式。假设我们有H个查询头，G个KV组（即G个KV头），每组的查询头数量为H/G。对于第g组：</p>
+
+        <div class="math-equation" role="group" aria-label="GQA 分组注意力公式">
+            <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="GQA 分组注意力公式，可横向滚动">
+                <math display="block" aria-label="第 g 组的输出等于 softmax，Q_g 乘 K_g 转置再除以根号 d，然后乘 V_g；其中 Q_g 含 H/G 个查询头，而 K_g 与 V_g 只有一对共享头">
+                    <mrow>
+                        <msub><mi>O</mi><mi>g</mi></msub><mo>=</mo>
+                        <mi>softmax</mi>
+                        <mrow><mo>(</mo><mfrac><mrow><msub><mi>Q</mi><mi>g</mi></msub><msubsup><mi>K</mi><mi>g</mi><mo>⊤</mo></msubsup></mrow><msqrt><mi>d</mi></msqrt></mfrac><mo>)</mo></mrow>
+                        <msub><mi>V</mi><mi>g</mi></msub>
+                        <mo>,</mo><mspace width="1em"/>
+                        <mi>g</mi><mo>=</mo><mn>1</mn><mo>,</mo><mo>…</mo><mo>,</mo><mi>G</mi>
+                    </mrow>
+                </math>
+            </div>
+        </div>
 
         <pre><code># GQA 前向传播 (PyTorch伪代码)
 
@@ -242,7 +298,7 @@ def gqa_forward(query, key, value, num_heads, num_kv_heads):
             <strong>实现细节：</strong> 在实际工程中，我们不会真的用<code>repeat_interleave</code>把KV显式扩展成H份——这样会浪费显存。更好的做法是在注意力分数计算时做"广播"（broadcasting）：Q的形状是(B, H, L, d)，K的形状是(B, G, L, d)，在计算Q×K^T时自动将K广播到H个查询头上。但在PyTorch中，更常见的实现是使用<code>repeat_kv</code>函数（如HuggingFace的实现），因为它更简洁且对编译器更友好。
         </div>
 
-        <h3>8.5 GQA的实际收益：KV Cache与推理吞吐</h3>
+        <h2 id="sec-8-5">8.5 GQA的实际收益：KV Cache与推理吞吐</h2>
 
         <p>GQA带来的好处是实实在在的，而且在大模型上效果更明显。我们用一个实际的对比来展示：</p>
 
@@ -278,12 +334,14 @@ def gqa_forward(query, key, value, num_heads, num_kv_heads):
                 <td>87.5%</td>
             </tr>
             <tr>
-                <td>MMLU基准分数</td>
+                <td>MMLU（5-shot）</td>
                 <td>68.9</td>
-                <td>~70.0</td>
-                <td>不降反升</td>
+                <td>82.0</td>
+                <td>不可直接对比 *</td>
             </tr>
         </table>
+
+        <p class="tip"><strong>数字怎么来的：</strong> KV Cache 行是按公式 <em>单序列字节数 = 2 × KV头数 × head_dim × 2 字节 × 层数 × 序列长度</em> 直接算出的（LLaMA-2 70B：2×64×128×2×80×4096 ≈ 10.7 GiB），因此 87.5% 的节省恰好等于 KV 头数 8/64 的比例，属可复现的推算而非实测。*MMLU 一行的 68.9 出自 <a href="https://arxiv.org/abs/2307.09288">LLaMA 2 论文</a>，82.0 出自 <a href="https://arxiv.org/abs/2407.21783">LLaMA 3 论文</a>；两者预训练数据、规模与上下文都不同，<strong>不能</strong>把差异归因于 GQA，此处仅作各代发布值的记录。</p>
 
         <p>KV Cache从672GB降到84GB是什么概念？这意味着同样用8张A100 80G（总共640GB显存），MHA模式下KV Cache就占满了全部显存，根本放不下模型权重。而GQA模式下，84GB的KV Cache加上140GB的模型权重，总共只需要224GB，还有大量富余空间来加大batch size或延长上下文。</p>
 
@@ -291,17 +349,47 @@ def gqa_forward(query, key, value, num_heads, num_kv_heads):
             <strong>真实踩坑：</strong> 我自己在做LLaMA 2 70B的推理优化时，曾经遇到过这样一个问题。我们使用了HuggingFace默认的实现，但发现即使我们只用batch size=1，显存占用也高达160GB（模型权重140GB + KV Cache 20GB）。后来排查发现，HF的某些版本实现中，即使我们传入的模型没有GQA（LLaMA 2 70B是有GQA的），它也默认在MHA模式下运行。解决方案是检查<code>config.num_key_value_heads</code>是否正确设置为8。如果你的实现中这个参数等于<code>num_attention_heads</code>（64），那就相当于退回到了MHA。这种配置错误非常隐蔽——模型推理不会报错，只是显存占用比预期高8倍，推理速度慢3-4倍。<strong>检查num_key_value_headers配置</strong>应该成为LLaMA推理优化清单的第一条。
         </div>
 
-        <h3>8.6 GQA在训练和推理中的差异</h3>
+        <div class="widget" role="group" aria-label="GQA KV Cache 规模估算">
+            <label for="gqa-g">拖动滑块改变 KV 头数 G（LLaMA 2/3 70B 的查询头数 H = 64）：<output id="gqa-g-out">8</output></label>
+            <input type="range" id="gqa-g" min="1" max="64" step="1" value="8">
+            <div class="readout" id="gqa-out">…</div>
+            <p>计算口径：单序列长度 4096、层数 80、head_dim = 128、fp16（每元素 2 字节），缓存同时保存 K 与 V。G=64 即 MHA，G=1 即 MQA，中间的 G 就是 GQA；每组查询头数 H/G 必须整除，工程上通常取 4–16。</p>
+        </div>
+        <script>
+        (function () {
+            var slider = document.getElementById('gqa-g');
+            var gOut = document.getElementById('gqa-g-out');
+            var out = document.getElementById('gqa-out');
+            var H = 64, LAYERS = 80, HEAD_DIM = 128, SEQ = 4096, BYTES = 2;
+            function gib(g) {
+                return (2 * g * HEAD_DIM * BYTES * LAYERS * SEQ) / Math.pow(1024, 3);
+            }
+            var mha = gib(H);
+            function render() {
+                var g = Number(slider.value);
+                gOut.textContent = String(g);
+                var per = (H / g);
+                out.textContent = 'G = ' + g
+                    + '　每组查询头数 H/G = ' + (Number.isInteger(per) ? per : per.toFixed(2))
+                    + '　单序列 4K KV Cache ≈ ' + gib(g).toFixed(2) + ' GiB'
+                    + '　相对 MHA 节省 ' + (100 * (1 - g / H)).toFixed(1) + '%';
+            }
+            slider.addEventListener('input', render);
+            render();
+        })();
+        </script>
+
+        <h2 id="sec-8-6">8.6 GQA在训练和推理中的差异</h2>
 
         <p>理解GQA对训练和推理的不同影响，对于工程优化至关重要：</p>
 
         <p><strong>训练阶段：</strong> GQA对训练速度的影响不大。因为训练是并行处理整个序列的，不需要KV Cache。GQA在训练中主要影响的是模型参数数量——KV投影矩阵的参数变少了（从H×d减少到G×d），但这在大模型的总参数量中占比很小（通常不到0.5%），所以训练效率几乎没有变化。</p>
 
-        <p><strong>推理阶段：</strong> GQA对推理的影响可以说是"脱胎换骨"的。Prefill阶段（并行处理prompt中的tokens）因为KV投影更少，计算量略微减少。Decode阶段（逐token生成）的改进则非常巨大——KV Cache内存占用降低到MHA的G/H，内存带宽需求也同步降低。在LLaMA 3 70B上，GQA使得decode吞吐量比同等规模的MHA模型提高了约2.5倍。</p>
+        <p><strong>推理阶段：</strong> GQA对推理的影响可以说是"脱胎换骨"的。Prefill阶段（并行处理prompt中的tokens）因为KV投影更少，计算量略微减少。Decode阶段（逐token生成）的改进则非常巨大——KV Cache内存占用降低到MHA的G/H，内存带宽需求也同步降低。根据 GQA 原论文的测量，改进后的 MQA/GQA 模型在推理中接近 MQA 的速度，而质量接近 MHA（<a href="https://arxiv.org/abs/2305.13245">Ainslie 等，arXiv:2305.13245</a>）；具体倍数随硬件、batch 与实现而变，本章不引用单一固定数字。</p>
 
         <p>这种"训练几乎无差别，推理天差地别"的特性，使得GQA成为一个性价比极高的优化。你花在GQA上的设计成本是一次性的，而推理效率的提升是永久性的。</p>
 
-        <h3>8.7 LLaMA的GQA配置演变</h3>
+        <h2 id="sec-8-7">8.7 LLaMA的GQA配置演变</h2>
 
         <p>从LLaMA 1到LLaMA 3，GQA的配置变化反映了Meta对"质量-效率平衡"的持续探索：</p>
 
@@ -327,7 +415,7 @@ def gqa_forward(query, key, value, num_heads, num_kv_heads):
             <a href="09.html">下一章 →</a>
         </div>
 
-    </div>
+    </main>
 </div>
 </div>
 </body>
