@@ -9,7 +9,7 @@
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>🦙 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 LLaMA系列概述</a></li>
@@ -41,16 +41,26 @@
             <li><a href="27.html">第27章 LLaMA 4展望与MoE架构</a></li>
             <li><a href="28.html">第28章 开源LLM生态与未来趋势</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
 
-        <h2>第3章 RoPE旋转位置编码</h2>
+        <h1>第3章 RoPE旋转位置编码</h1>
 
+        <nav class="toc" aria-label="本章小节导航">
+            <strong>本章导航：</strong>
+            <a href="#sec-3-1">3.1 必要性</a> ·
+            <a href="#sec-3-2">3.2 方案对比</a> ·
+            <a href="#sec-3-3">3.3 数学原理</a> ·
+            <a href="#sec-3-4">3.4 LLaMA实现</a> ·
+            <a href="#sec-3-5">3.5 LLaMA 3改进</a> ·
+            <a href="#sec-3-6">3.6 直观理解</a> ·
+            <a href="#sec-3-7">3.7 优缺点</a>
+        </nav>
         <p>大家好，我是你们的讲师。上一章我们建立了LLaMA架构的整体视图，现在开始逐个拆解核心组件。第一个登场的，是LLaMA在位置编码领域的选择——<strong>RoPE（Rotary Position Embedding）</strong>。如果说Transformer是LLM的骨架，那位置编码就是让骨架感知"顺序"的神经系统。没有它，模型就无法区分"我爱你"和"你爱我"。</p>
 
-        <p>RoPE是2021年由苏剑林等人在论文<em>"RoFormer: Enhanced Transformer with Rotary Position Embedding"</em>中提出的。有意思的是，这篇论文最初来自中文团队，而LLaMA是第一个大规模采用RoPE的英文主流模型。这也算是中文研究者的原创工作在全球顶级模型中的应用案例。</p>
+        <p>RoPE是2021年由苏剑林等人在论文<a href="https://arxiv.org/abs/2104.09864"><em>“RoFormer: Enhanced Transformer with Rotary Position Embedding”</em></a>（arXiv:2104.09864）中提出的。有意思的是,这篇论文最初来自中文团队,而LLaMA是第一个大规模采用RoPE的英文主流模型。这也算是中文研究者的原创工作在全球顶级模型中的应用案例。</p>
 
-        <h3>3.1 位置编码的必要性</h3>
+        <h2 id="sec-3-1">3.1 位置编码的必要性</h2>
 
         <p>Transformer的Self-Attention机制具有一个根本性的"缺陷"：<strong>排列不变性（Permutation Invariance）</strong>。也就是说，如果对输入序列的元素进行重排，但保持每个位置的值不变，Attention的输出仅仅是相应地重排了一下——注意力分数矩阵本身并没有改变。这意味着Transformer不知道"今天"在"天气"前面还是后面。</p>
 
@@ -65,7 +75,7 @@
 
         <p>位置编码需要满足几个关键性质：第一，<strong>唯一性</strong>——每个位置必须有唯一的编码；第二，<strong>有界性</strong>——编码的数值范围要可控，不会随序列长度无限增长；第三，<strong>相对位置感知</strong>——编码能反映出"位置i和位置j之间的距离"这一信息；第四，<strong>外推能力</strong>——模型在训练时见过的最大序列长度是L，但在推理时能处理比L更长的序列。</p>
 
-        <h3>3.2 三种位置编码方案对比</h3>
+        <h2 id="sec-3-2">3.2 三种位置编码方案对比</h2>
 
         <p>在RoPE出现之前，主流的位置编码方案主要有两类：绝对位置编码和相对位置编码。让我们看看它们各自的优缺点。</p>
 
@@ -104,13 +114,29 @@
             <strong>关键洞察：</strong> 绝对位置编码和相对位置编码的本质区别在于"位置信息在哪注入"。绝对编码在输入层就把位置加进去，然后靠模型在后续层里"悟出"相对位置关系。相对编码则在每一层的Attention计算中显式地告诉模型位置距离——这更像是在给模型"开小抄"。RoPE走了一条中间路线：它把位置信息编码到Q和K中，让Attention计算时自然地包含位置信息，但又不需要像相对编码那样显式地修改Attention分数。
         </div>
 
-        <h3>3.3 RoPE的数学原理</h3>
+        <h2 id="sec-3-3">3.3 RoPE的数学原理</h2>
 
         <p>RoPE的核心思想极其优雅：<strong>将位置编码表示为旋转矩阵，通过旋转向量来实现位置信息的注入</strong>。这个过程可以用复数域的旋转来理解，也可以用二维空间的旋转可视化来直观感受。</p>
 
-        <h4>3.3.1 从二维旋转开始</h4>
+        <h3>3.3.1 从二维旋转开始</h3>
 
         <p>先看最简单的情况：假设我们的向量是二维的。在复数平面上，对一个向量进行θ角度的旋转，等价于乘以一个旋转矩阵：</p>
+
+        <div class="math-equation" role="group" aria-label="二维旋转矩阵">
+            <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="二维旋转矩阵公式，可横向滚动">
+                <math display="block" aria-label="二维旋转矩阵 R(theta) 等于上排 cos theta、负 sin theta，下排 sin theta、cos theta">
+                    <mrow>
+                        <mi>R</mi><mo>(</mo><mi>θ</mi><mo>)</mo><mo>=</mo>
+                        <mrow><mo>[</mo>
+                            <mtable>
+                                <mtr><mtd><mrow><mi>cos</mi><mo>&#x2061;</mo><mi>θ</mi></mrow></mtd><mtd><mrow><mo>−</mo><mi>sin</mi><mo>&#x2061;</mo><mi>θ</mi></mrow></mtd></mtr>
+                                <mtr><mtd><mrow><mi>sin</mi><mo>&#x2061;</mo><mi>θ</mi></mrow></mtd><mtd><mrow><mi>cos</mi><mo>&#x2061;</mo><mi>θ</mi></mrow></mtd></mtr>
+                            </mtable>
+                        <mo>]</mo></mrow>
+                    </mrow>
+                </math>
+            </div>
+        </div>
 
         <pre><code># 二维旋转矩阵
 # 将向量 (x, y) 旋转 θ 角度
@@ -129,7 +155,30 @@ R(θ) = [[cos θ, -sin θ],
 
         <p>这就是RoPE的直觉：<strong>通过旋转位置编码，让Q和K的点积结果自然地依赖于它们的相对位置</strong>。不需要额外计算相对位置偏差，也不需要修改Attention分数的计算方式。</p>
 
-        <h4>3.3.2 扩展到高维空间</h4>
+        <figure>
+            <svg viewBox="0 0 560 300" role="img" aria-labelledby="fig-rope-rot-title" xmlns="http://www.w3.org/2000/svg">
+                <title id="fig-rope-rot-title">二维旋转示意：向量 v 旋转 θ 角后得到 R(θ)v</title>
+                <desc>在直角坐标系中，向量 v 从原点指向右上方（约二十度）；将它逆时针旋转 θ 角后得到虚线终点 R(θ)v，两者共享同一长度，长度即向量模长。</desc>
+                <defs>
+                    <marker id="fig-rope-rot-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                        <path d="M0,0 L10,5 L0,10 z" fill="#7c3aed"/>
+                    </marker>
+                </defs>
+                <line x1="30" y1="240" x2="545" y2="240" stroke="#94a3b8" stroke-width="1.5"/>
+                <line x1="90" y1="280" x2="90" y2="25" stroke="#94a3b8" stroke-width="1.5"/>
+                <text x="528" y="262" font-size="14" fill="#64748b">x</text>
+                <text x="68" y="34" font-size="14" fill="#64748b">y</text>
+                <line x1="90" y1="240" x2="250" y2="182" stroke="#7c3aed" stroke-width="3" marker-end="url(#fig-rope-rot-arrow)"/>
+                <text x="258" y="176" font-size="15" fill="#5b21b6">v</text>
+                <line x1="90" y1="240" x2="162" y2="86" stroke="#0d9488" stroke-width="3" stroke-dasharray="7 4" marker-end="url(#fig-rope-rot-arrow)"/>
+                <text x="150" y="74" font-size="15" fill="#0f766e">R(θ)v</text>
+                <path d="M165,212 A80,80 0 0 0 124,168" fill="none" stroke="#f59e0b" stroke-width="2.5"/>
+                <text x="168" y="200" font-size="14" fill="#b45309">θ</text>
+            </svg>
+            <figcaption><strong>图 3-1.</strong> RoPE 的最小心智模型：位置编码不是把位置数值“加”到向量上，而是把向量按与位置成正比的夹角旋转。同一向量旋转不同角度后模长不变，只有方向改变，因此向量仍可参与点积运算。</figcaption>
+        </figure>
+
+        <h3>3.3.2 扩展到高维空间</h3>
 
         <p>在实际模型中，隐藏维度d通常是4096或更大。RoPE的做法是将d维空间分成d/2个二维子空间（或者按复数域的视角，分成d/2对），每对分配一个不同的旋转频率。这样，不同维度的向量分量以不同的速度旋转——有些维度旋转很快（高频），捕捉近距离的依赖关系；有些维度旋转很慢（低频），捕捉长距离的依赖。</p>
 
@@ -171,7 +220,7 @@ def apply_rope(x, seq_len, theta_base=10000.0):
 
         <p>注意上面代码中的theta_base参数，在LLaMA 1和2中设为10000。这个值越大，最低频率越低，能编码的最大距离就越长。我们会在3.5节中看到LLaMA 3是如何调整这个参数的。</p>
 
-        <h4>3.3.3 RoPE的数学性质</h4>
+        <h3>3.3.3 RoPE的数学性质</h3>
 
         <p>RoPE有一些非常重要的数学性质，直接决定了它在LLM中的表现：</p>
 
@@ -181,7 +230,32 @@ def apply_rope(x, seq_len, theta_base=10000.0):
             <li><strong>可外推性：</strong> 由于旋转矩阵只依赖于位置差，理论上模型可以处理训练时未见过的长序列。但实际中受到频率范围（高频、低频分量的取值）的限制，需要一些技巧才能很好地外推。</li>
         </ul>
 
-        <h3>3.4 RoPE在LLaMA中的具体实现</h3>
+        <div class="widget" role="group" aria-label="相对位置注意力分数演示">
+            <label for="rope-delta">拖动滑块改变相对距离 Δ = m − n：<output id="rope-delta-out">4</output></label>
+            <input type="range" id="rope-delta" min="0" max="24" step="1" value="4">
+            <div class="readout" id="rope-score-out">…</div>
+            <p>下面三条读数分别对应一个高频、中频、低频的二维子空间。当 query 与 key 的内容完全相同时，单个子空间贡献的注意力分数恰好是 <strong>cos(Δ·ω)</strong>：高频项快速振荡（实现远距离衰减），低频项几乎不衰减（保留长距离信号）。数值由页面内脚本即时计算，属于教学演示，不代表具体模型的实测权重。</p>
+        </div>
+        <script>
+        (function () {
+            var slider = document.getElementById('rope-delta');
+            var out = document.getElementById('rope-delta-out');
+            var scoreOut = document.getElementById('rope-score-out');
+            var freqs = [1.0, 0.25, 0.0625];
+            var names = ['高频 ω=1', '中频 ω=0.25', '低频 ω=0.0625'];
+            function render() {
+                var d = Number(slider.value);
+                out.textContent = String(d);
+                scoreOut.textContent = freqs.map(function (w, i) {
+                    return names[i] + '：cos(' + d + '×' + w + ') = ' + Math.cos(d * w).toFixed(3);
+                }).join('　|　');
+            }
+            slider.addEventListener('input', render);
+            render();
+        })();
+        </script>
+
+        <h2 id="sec-3-4">3.4 RoPE在LLaMA中的具体实现</h2>
 
         <p>在LLaMA的实际实现中，RoPE的集成方式值得注意。它不是像Sinusoidal编码那样直接加在输入embedding上，而是<strong>在Self-Attention计算过程中，对Q和K向量施加旋转</strong>。</p>
 
@@ -213,7 +287,7 @@ def self_attention(x, pos_ids):
             <strong>实现小贴士：</strong> 在RoPE的高效实现中，通常不直接做矩阵乘法，而是利用复数乘法技巧将计算复杂度降到O(d)（对每个维度做两个乘法和一个加法）。上面的伪代码已经展示了这种实现方式。如果你在阅读LLaMA的源码（如HuggingFace实现），你会看到类似的操作模式。
         </div>
 
-        <h3>3.5 LLaMA 3对RoPE的改进</h3>
+        <h2 id="sec-3-5">3.5 LLaMA 3对RoPE的改进</h2>
 
         <p>LLaMA 3在RoPE上做了两项重要改进，使得模型能够支持更长的上下文和更好的外推能力。</p>
 
@@ -259,7 +333,7 @@ def ntk_scale_freqs(head_dim, max_seq_len, theta_base=500000.0, scale=16.0):
             <strong>踩坑记录：</strong> 我在一次工程实践中尝试将LLaMA 2 7B的上下文从4K扩展到8K，直接应用了最简单的"位置插值"（即把所有位置弧度除以2），结果模型产生了严重的困惑度退化——长距离依赖几乎完全失效。这个问题的根源是：简单的位置插值相当于把所有频率都减半，导致高频维度失去了对相邻token的区分能力。后来换用NTK-aware scaling才解决了这个问题。这个经验告诉我：<strong>RoPE的外推不是一个简单的"除以缩放因子"的问题，高频和低频分量的特性需要区别对待</strong>。
         </div>
 
-        <h3>3.6 RoPE的直观理解</h3>
+        <h2 id="sec-3-6">3.6 RoPE的直观理解</h2>
 
         <p>为了帮助大家建立对RoPE的直觉，我们用一个可视化类比。想象你站在一个转盘上，转盘上画了不同颜色的半径线，每条线代表一个频率维度。</p>
 
@@ -270,9 +344,34 @@ def ntk_scale_freqs(head_dim, max_seq_len, theta_base=500000.0, scale=16.0):
 
         <p>RoPE的精妙之处在于，它在一个高维空间中同时编码了这两种信息——高频维度负责"精细定位"，低频维度负责"全局感知"。而不同频率之间的平滑过渡确保了位置编码的连续性和一致性。</p>
 
+        <figure>
+            <svg viewBox="0 0 560 240" role="img" aria-labelledby="fig-rope-freq-title" xmlns="http://www.w3.org/2000/svg">
+                <title id="fig-rope-freq-title">同一位置下高低频维度的旋转角度对比</title>
+                <desc>左侧高频维度的向量在相同位置下已经转过多圈，角度很大；右侧低频维度的向量只转了很小的一个角。两者共享同一位置参数，但旋转速度不同。</desc>
+                <defs>
+                    <marker id="fig-rope-freq-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                        <path d="M0,0 L10,5 L0,10 z" fill="#0d9488"/>
+                    </marker>
+                </defs>
+                <circle cx="150" cy="120" r="80" fill="none" stroke="#cbd5e1" stroke-width="1.5"/>
+                <line x1="150" y1="120" x2="230" y2="120" stroke="#cbd5e1" stroke-dasharray="5 4" stroke-width="1.5"/>
+                <line x1="150" y1="120" x2="80" y2="80" stroke="#0d9488" stroke-width="3" marker-end="url(#fig-rope-freq-arrow)"/>
+                <path d="M190,120 A40,40 0 0 0 116,101" fill="none" stroke="#f59e0b" stroke-width="2"/>
+                <text x="196" y="88" font-size="14" fill="#b45309">≈ 150°</text>
+                <text x="92" y="204" font-size="15" fill="#0f766e">高频维度 ω 大</text>
+                <circle cx="410" cy="120" r="80" fill="none" stroke="#cbd5e1" stroke-width="1.5"/>
+                <line x1="410" y1="120" x2="490" y2="120" stroke="#cbd5e1" stroke-dasharray="5 4" stroke-width="1.5"/>
+                <line x1="410" y1="120" x2="483" y2="94" stroke="#7c3aed" stroke-width="3" marker-end="url(#fig-rope-freq-arrow)"/>
+                <path d="M455,120 A45,45 0 0 0 451,101" fill="none" stroke="#f59e0b" stroke-width="2"/>
+                <text x="462" y="100" font-size="14" fill="#b45309">≈ 27°</text>
+                <text x="352" y="204" font-size="15" fill="#5b21b6">低频维度 ω 小</text>
+            </svg>
+            <figcaption><strong>图 3-2.</strong> 同一个位置参数 p 作用在不同频率维度上得到的旋转角（示意图，角度为便于对比而取近似值）。高频维度转得快，能区分相邻 token；低频维度转得慢，用长弧长承载长距离信息。</figcaption>
+        </figure>
+
         <p>这种多频率的设计还有一个意外的优点：<strong>不同的注意力头可以"选择"关注不同尺度的位置关系</strong>。有些头可以主要利用高频维度来捕捉局部语法依赖（如形容词-名词的修饰关系），有些头可以利用低频维度来捕捉文档级别的主题一致性。这就是多头注意力和RoPE协同工作的方式。</p>
 
-        <h3>3.7 RoPE的优缺点再思考</h3>
+        <h2 id="sec-3-7">3.7 RoPE的优缺点再思考</h2>
 
         <p>任何技术都不是银弹，RoPE也有它的局限性。让我们做一个诚实的评估：</p>
 
@@ -326,7 +425,7 @@ def ntk_scale_freqs(head_dim, max_seq_len, theta_base=500000.0, scale=16.0):
             <a href="04.html">下一章 →</a>
         </div>
 
-    </div>
+    </main>
 </div>
 </div>
 </body>
