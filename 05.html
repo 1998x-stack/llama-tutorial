@@ -9,7 +9,7 @@
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>🦙 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 LLaMA系列概述</a></li>
@@ -41,16 +41,27 @@
             <li><a href="27.html">第27章 LLaMA 4展望与MoE架构</a></li>
             <li><a href="28.html">第28章 开源LLM生态与未来趋势</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
 
-        <h2>第5章 SwiGLU激活函数</h2>
+        <h1>第5章 SwiGLU激活函数</h1>
+
+        <nav class="toc" aria-label="本章小节导航">
+            <strong>本章导航：</strong>
+            <a href="#sec-5-1">5.1 FFN结构回顾</a> ·
+            <a href="#sec-5-2">5.2 GLU家族</a> ·
+            <a href="#sec-5-3">5.3 SwiGLU思想</a> ·
+            <a href="#sec-5-4">5.4 LLaMA的选择</a> ·
+            <a href="#sec-5-5">5.5 PyTorch实现</a> ·
+            <a href="#sec-5-6">5.6 各代配置差异</a> ·
+            <a href="#sec-5-7">5.7 效果对比</a>
+        </nav>
 
         <p>大家好，我是你们的讲师。在Transformer的架构中，FFN（前馈神经网络）的地位常常被低估——大家的注意力都被Self-Attention吸引走了。但越来越多的研究表明，FFN在Transformer中承担的角色远比"简单的非线性变换"要重要得多，它实际上是模型的"知识存储库"。而LLaMA对FFN的改造——用<strong>SwiGLU</strong>替代ReLU——可能是整个架构中"性价比最高"的一项改进。</p>
 
         <p>SwiGLU不是LLaMA发明的，它来自2020年Google的研究<em>"GLU Variants Improve Transformer"</em>，这篇论文系统性地比较了多种GLU（Gated Linear Unit）变体在Transformer中的表现，结论是SwiGLU和GeGLU效果最好。LLaMA的贡献在于：<strong>它是第一个在大规模语言模型训练中验证SwiGLU效果的主流模型</strong>，并且这个选择被后续几乎所有开源LLM继承。</p>
 
-        <h3>5.1 传统FFN层结构回顾</h3>
+        <h2 id="sec-5-1">5.1 传统FFN层结构回顾</h2>
 
         <p>在标准Transformer中，FFN的结构非常简洁：一个线性变换将输入从d维映射到4d维，经过一个非线性激活函数，然后再映射回d维。这个"先放大再压缩"的设计有两个作用：第一，在放大维度上做非线性变换，增加了模型的表达能力；第二，通过信息瓶颈（从4d压缩回d）迫使模型学习更紧凑的表示。</p>
 
@@ -68,7 +79,7 @@ FFN_ReLU(x) = W_2 · ReLU(W_1 · x + b_1) + b_2
 
         <p>但不管是ReLU还是GELU，它们都是"单路径"的激活函数：输入经过一个线性变换，然后被激活函数"压制"到一个非线性范围。SwiGLU的思路与此截然不同——它引入了"门控"的概念。</p>
 
-        <h3>5.2 GLU（Gated Linear Unit）家族</h3>
+        <h2 id="sec-5-2">5.2 GLU（Gated Linear Unit）家族</h2>
 
         <p>GLU的核心思想来自LSTM中的门控机制：用一个"门"来控制信息的通过量。在LSTM中，遗忘门、输入门、输出门分别控制着信息流的三个通道。GLU把这个概念简化到了一个线性层中：</p>
 
@@ -126,9 +137,22 @@ GLU(x) = (W_1 · x + b_1) ⊗ σ(W_2 · x + b_2)
 
         <p>在这些变体中，SwiGLU和GeGLU表现最好。SwiGLU使用Swish作为门控激活函数，而Swish本身就是一种自门控激活函数（我们下面详细讨论）。GeGLU使用GELU作为门控，在某些场景下略优于SwiGLU，但差异很小。</p>
 
-        <h3>5.3 SwiGLU的核心思想</h3>
+        <h2 id="sec-5-3">5.3 SwiGLU的核心思想</h2>
 
         <p>SwiGLU = Swish + GLU，即使用Swish作为门控函数的GLU变体。Swish激活函数的公式是：</p>
+
+        <div class="math-equation" role="group" aria-label="Swish 公式">
+            <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="Swish 公式，可横向滚动">
+                <math display="block" aria-label="Swish(x) 等于 x 乘以 sigmoid(x)，其中 sigmoid(x) 等于 1 除以 1 加 e 的负 x 次方">
+                    <mrow>
+                        <mi>Swish</mi><mo>(</mo><mi>x</mi><mo>)</mo><mo>=</mo><mi>x</mi><mo>⋅</mo><mi>σ</mi><mo>(</mo><mi>x</mi><mo>)</mo>
+                        <mo>,</mo><mspace width="1em"/>
+                        <mi>σ</mi><mo>(</mo><mi>x</mi><mo>)</mo><mo>=</mo>
+                        <mfrac><mn>1</mn><mrow><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>x</mi></mrow></msup></mrow></mfrac>
+                    </mrow>
+                </math>
+            </div>
+        </div>
 
         <pre><code># Swish 激活函数
 Swish(x) = x · σ(β · x)
@@ -149,6 +173,18 @@ Swish(x) = x · σ(x)
 
         <p>完整的SwiGLU FFN的数学公式为：</p>
 
+        <div class="math-equation" role="group" aria-label="SwiGLU FFN 公式">
+            <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="SwiGLU FFN 公式，可横向滚动">
+                <math display="block" aria-label="SwiGLU 前馈输出等于 W2 乘以，Swish(W1 x) 与 W3 x 的逐元素积">
+                    <mrow>
+                        <mtext>SwiGLU</mtext><mo>(</mo><mi>x</mi><mo>)</mo><mo>=</mo>
+                        <msub><mi>W</mi><mn>2</mn></msub>
+                        <mrow><mo>(</mo><mi>Swish</mi><mo>(</mo><msub><mi>W</mi><mn>1</mn></msub><mi>x</mi><mo>)</mo><mo>⊙</mo><mo>(</mo><msub><mi>W</mi><mn>3</mn></msub><mi>x</mi><mo>)</mo><mo>)</mo></mrow>
+                    </mrow>
+                </math>
+            </div>
+        </div>
+
         <pre><code># SwiGLU FFN (LLaMA 使用的形式)
 # 输入: x ∈ R^d
 # 注意: 共 3 个权重矩阵，无 bias
@@ -167,9 +203,72 @@ SwiGLU_FFN(x) = W_2 · (Swish(W_1 · x) ⊗ (W_3 · x))
 # 参数量: d × d_ff + d × d_ff + d_ff × d = 3 × d × d_ff
 # = 对比标准 FFN 的 2×d×d_ff，参数量增加了 50%</code></pre>
 
-        <h3>5.4 LLaMA为什么选择SwiGLU</h3>
+        <figure>
+            <svg viewBox="0 0 640 340" role="img" aria-labelledby="fig-swiglu-title" xmlns="http://www.w3.org/2000/svg">
+                <title id="fig-swiglu-title">SwiGLU 前馈网络的双路径结构</title>
+                <desc>输入 x 分别经过门控投影 W1 与内容投影 W3；门控路径再经过 Swish 激活，然后与内容路径逐元素相乘，最后由 W2 投影回模型维度。</desc>
+                <defs>
+                    <marker id="fig-swiglu-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                        <path d="M0,0 L10,5 L0,10 z" fill="#7c3aed"/>
+                    </marker>
+                </defs>
+                <rect x="20" y="148" width="70" height="44" rx="10" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2"/>
+                <text x="55" y="176" font-size="15" text-anchor="middle" fill="#4c1d95">x</text>
+                <rect x="140" y="60" width="110" height="44" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+                <text x="195" y="87" font-size="13" text-anchor="middle" fill="#92400e">W₁ 门控</text>
+                <rect x="310" y="60" width="100" height="44" rx="10" fill="#fee2e2" stroke="#ef4444" stroke-width="2"/>
+                <text x="360" y="87" font-size="13" text-anchor="middle" fill="#b91c1c">Swish</text>
+                <rect x="140" y="240" width="110" height="44" rx="10" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2"/>
+                <text x="195" y="267" font-size="13" text-anchor="middle" fill="#075985">W₃ 内容</text>
+                <circle cx="475" cy="170" r="24" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2"/>
+                <text x="475" y="177" font-size="18" text-anchor="middle" fill="#5b21b6">⊙</text>
+                <rect x="525" y="148" width="95" height="44" rx="10" fill="#d1fae5" stroke="#0d9488" stroke-width="2"/>
+                <text x="572" y="176" font-size="13" text-anchor="middle" fill="#0f766e">W₂ 输出</text>
+                <line x1="90" y1="170" x2="138" y2="84" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-swiglu-arrow)"/>
+                <line x1="90" y1="170" x2="138" y2="260" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-swiglu-arrow)"/>
+                <line x1="250" y1="82" x2="308" y2="82" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-swiglu-arrow)"/>
+                <line x1="410" y1="82" x2="472" y2="146" stroke="#ef4444" stroke-width="2" marker-end="url(#fig-swiglu-arrow)"/>
+                <line x1="250" y1="262" x2="472" y2="194" stroke="#0ea5e9" stroke-width="2" marker-end="url(#fig-swiglu-arrow)"/>
+                <line x1="499" y1="170" x2="523" y2="170" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-swiglu-arrow)"/>
+            </svg>
+            <figcaption><strong>图 5-1.</strong> SwiGLU 的双路径拓扑：橙色的门控路径决定“保留多少”，蓝色的内容路径提供“保留什么”，两者逐元素相乘后由 W₂ 输出。三条投影共 3×d×d_ff 个参数，比标准 FFN 的 2×d×d_ff 多 50%。</figcaption>
+        </figure>
 
-        <p>LLaMA选择SwiGLU而不是ReLU或GELU，基于的是非常实际的实验数据。LLaMA论文引用了<em>"GLU Variants Improve Transformer"</em>的结论，该论文在多种任务上对比了不同激活函数的FFN变体。</p>
+        <div class="widget" role="group" aria-label="激活函数数值对比">
+            <label for="swish-x">拖动滑块改变输入 x：<output id="swish-x-out">-1.5</output></label>
+            <input type="range" id="swish-x" min="-6" max="6" step="0.1" value="-1.5">
+            <div class="readout" id="swish-out">…</div>
+            <p>把 x 滑到负值区间可以看到：ReLU 直接归零，而 Swish 会先下降、在 x ≈ -1.28 处取得约 -0.278 的极小值再回升——这就是它<strong>非单调</strong>的小负值区，为网络保留了少量负向信号。GELU 此处用常见的 tanh 近似式计算，仅作形状对比。</p>
+        </div>
+        <script>
+        (function () {
+            var slider = document.getElementById('swish-x');
+            var xOut = document.getElementById('swish-x-out');
+            var out = document.getElementById('swish-out');
+            function sigmoid(z) { return 1 / (1 + Math.exp(-z)); }
+            function gelu(z) {
+                var c = Math.sqrt(2 / Math.PI);
+                return 0.5 * z * (1 + Math.tanh(c * (z + 0.044715 * Math.pow(z, 3))));
+            }
+            function render() {
+                var x = Number(slider.value);
+                xOut.textContent = x.toFixed(1);
+                var swish = x * sigmoid(x);
+                out.textContent = 'x = ' + x.toFixed(1)
+                    + '　Swish = ' + swish.toFixed(3)
+                    + '　ReLU = ' + Math.max(0, x).toFixed(3)
+                    + '　GELU(tanh近似) = ' + gelu(x).toFixed(3);
+            }
+            slider.addEventListener('input', render);
+            render();
+        })();
+        </script>
+
+        <h2 id="sec-5-4">5.4 LLaMA为什么选择SwiGLU</h2>
+
+        <p>LLaMA选择SwiGLU而不是ReLU或GELU，基于的是非常实际的实验数据。LLaMA论文引用了 Noam Shazeer 的 <a href="https://arxiv.org/abs/2002.05202"><em>“GLU Variants Improve Transformer”</em></a>（arXiv:2002.05202，2020）的结论，该论文在多种任务上对比了不同激活函数的 FFN 变体。</p>
+
+        <div class="tip"><strong>来源：</strong> “相同 FLOPs 下 SwiGLU 优于 ReLU/GELU”这一结论出自上面的 GLU Variants 论文；LLaMA 把 FFN 中间维度取为约 (8/3)d 以对齐参数量，见 <a href="https://arxiv.org/abs/2302.13971">LLaMA 论文</a>（arXiv:2302.13971，2023）中关于模型超参的说明。具体 PPL 数值随数据与规模而变，本章不引用固定数字。</div>
 
         <p>核心结论是：<strong>在相同的FLOPs预算下，SwiGLU的困惑度（PPL）明显优于ReLU和GELU</strong>。这里的"相同FLOPs"是关键——因为SwiGLU有三个权重矩阵而不是两个，如果我们直接套用，计算量会增加50%。所以需要进行参数量的调整。</p>
 
@@ -199,7 +298,7 @@ SwiGLU_FFN(x) = W_2 · (Swish(W_1 · x) ⊗ (W_3 · x))
             <strong>直觉理解：</strong> 为什么SwiGLU比ReLU更好？想象一下你有一堆文件需要处理。ReLU的做法是：把所有文件都做一遍处理，然后把"不重要"的标记为0（这就是ReLU把负数归零）。SwiGLU的做法更智能：先看一遍所有文件的标题（门控路径），筛选出哪些文件值得仔细阅读，然后只处理这些文件（内容路径 × 门控值）。<strong>多一步筛选，少很多噪声。</strong>这就是门控机制的核心优势。
         </div>
 
-        <h3>5.5 SwiGLU的PyTorch实现</h3>
+        <h2 id="sec-5-5">5.5 SwiGLU的PyTorch实现</h2>
 
         <p>LLaMA中SwiGLU FFN的实现也很简洁：</p>
 
@@ -259,7 +358,7 @@ def fused_swiglu(x, gate_weight, up_weight, down_weight):
     return F.linear(hidden, down_weight)</code></pre>
         </div>
 
-        <h3>5.6 LLaMA各代SwiGLU配置差异</h3>
+        <h2 id="sec-5-6">5.6 LLaMA各代SwiGLU配置差异</h2>
 
         <p>虽然LLaMA全系列都使用SwiGLU，但中间维度的具体比例在几代模型之间有所变化：</p>
 
@@ -337,7 +436,7 @@ def fused_swiglu(x, gate_weight, up_weight, down_weight):
             <strong>踩坑经验：</strong> 有一次我尝试在一个小型项目中将LLaMA 7B的SwiGLU替换回GELU（为了使用某个硬件加速库，该库对GELU有更高效的kernel实现），结果在验证集上PPL上升了约0.3。本以为这只是微小的精度损失，但实际部署到下游任务（一个文本分类任务）后，准确率从87.2%降到了85.1%——这个精度损失在业务上是不可接受的。所以千万不要低估SwiGLU的价值——它在训练时带来的好处会传递到最终的任务性能上。如果要替换激活函数，一定做好完整的评估。
         </div>
 
-        <h3>5.7 SwiGLU vs 其他激活函数的效果对比</h3>
+        <h2 id="sec-5-7">5.7 SwiGLU vs 其他激活函数的效果对比</h2>
 
         <p>让我们用一些公开的实验数据来量化SwiGLU的优势（数据来自<em>"GLU Variants Improve Transformer"</em>和LLaMA论文中的消融实验）：</p>
 
@@ -391,7 +490,7 @@ def fused_swiglu(x, gate_weight, up_weight, down_weight):
             <a href="06.html">下一章 →</a>
         </div>
 
-    </div>
+    </main>
 </div>
 </div>
 </body>
