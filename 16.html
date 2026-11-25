@@ -9,7 +9,7 @@
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>🦙 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 LLaMA系列概述</a></li>
@@ -41,16 +41,28 @@
             <li><a href="27.html">第27章 LLaMA 4展望与MoE架构</a></li>
             <li><a href="28.html">第28章 开源LLM生态与未来趋势</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
 
-        <h2>第16章 分布式训练策略</h2>
+        <h1>第16章 分布式训练策略</h1>
+
+        <nav class="toc" aria-label="本章小节导航">
+            <strong>本章导航：</strong>
+            <a href="#sec-16-1">16.1 数据并行与ZeRO</a> ·
+            <a href="#sec-16-2">16.2 张量并行</a> ·
+            <a href="#sec-16-3">16.3 流水线并行</a> ·
+            <a href="#sec-16-4">16.4 3D并行组合</a> ·
+            <a href="#sec-16-5">16.5 FSDP与ZeRO-3对比</a> ·
+            <a href="#sec-16-6">16.6 405B训练集群</a> ·
+            <a href="#sec-16-7">16.7 通信瓶颈</a> ·
+            <a href="#sec-16-8">16.8 训练框架对比</a>
+        </nav>
 
         <p>通过上一章的学习，我们掌握了如何在单卡甚至CPU上跑LLaMA推理。但推理是一回事，训练是另一回事。LLaMA 3 405B的参数量相当于4050亿个浮点数——如果全部用FP16存储就是810GB，而目前最大的单GPU显存（H100 80G）也放不下它的零头。要把这样的庞然大物训练出来，<strong>分布式训练不是可选项，而是必选项</strong>。</p>
 
         <p>分布式训练的核心问题是：如何把一个大模型切分成多份，分配到多个GPU上，让它们协同工作得像一个GPU一样？这个问题的答案涉及数据并行、张量并行、流水线并行三种基本策略，以及它们组合而成的"3D并行"。这一章我会逐一拆解每种策略的原理、优缺点，以及Meta在LLaMA训练中的具体选择。</p>
 
-        <h3>16.1 数据并行与ZeRO优化</h3>
+        <h2 id="sec-16-1">16.1 数据并行与ZeRO优化</h2>
 
         <p>数据并行（Data Parallelism）是分布式训练最朴素的想法：每个GPU上都有一份完整的模型副本，但分别处理不同的数据批次（micro-batch）。每个GPU独立计算梯度，然后通过all-reduce通信操作把所有梯度同步到所有GPU上。这样每个GPU上的梯度都等于全局平均梯度，再用它去更新模型参数。</p>
 
@@ -89,13 +101,33 @@
             </tr>
         </table>
 
+        <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="训练显存估算公式，可横向滚动">
+            <math display="block" aria-label="混合精度 Adam 训练的总显存约为每参数 16 字节：2 字节参数、2 字节梯度、12 字节优化器状态；再除以分片份数 G 得到单卡占用">
+                <mtable columnalign="left" rowspacing="0.7em">
+                    <mtr><mtd>
+                        <mrow>
+                            <mi>M</mi><mo>=</mo><mi>N</mi><mo>×</mo><mo>(</mo><mn>2</mn><mo>+</mo><mn>2</mn><mo>+</mo><mn>12</mn><mo>)</mo>
+                            <mo>=</mo><mn>16</mn><mspace width="0.3em"/><mi>N</mi>
+                        </mrow>
+                    </mtd></mtr>
+                    <mtr><mtd>
+                        <mrow>
+                            <msub><mi>M</mi><mtext>per-GPU</mtext></msub>
+                            <mo>=</mo>
+                            <mfrac><mi>M</mi><mi>G</mi></mfrac>
+                        </mrow>
+                    </mtd></mtr>
+                </mtable>
+            </math>
+        </div>
+
         <p>ZeRO-3是最激进的优化级别：它不仅分片优化器状态和梯度，还把模型参数也分片了。在每次前向传播之前，ZeRO-3通过all-gather操作从所有GPU上收集所需的参数分片；计算完成后立即释放不需要的分片。这样，每个GPU只在特定时刻持有它需要的参数块，训练70B模型时每张GPU的显存占用可以从140GB降到20GB以下。</p>
 
         <div class="tip">
             <strong>实际对比：</strong> 对于70B模型的训练，使用ZeRO-3（配合BF16）可以在64张A100 80G上高效运行，每张GPU的显存峰值约65GB。如果不用ZeRO，同样的硬件配置连模型参数都塞不下。ZeRO-3的通信开销比普通DP高出约50%，但节省的数倍显存让训练大模型变得可能。
         </div>
 
-        <h3>16.2 张量并行</h3>
+        <h2 id="sec-16-2">16.2 张量并行</h2>
 
         <p>如果说数据并行是"按数据维度切分"，那张量并行（Tensor Parallelism，简称TP）就是"按模型维度切分"。TP把一个Transformer层内部的矩阵运算切分成多个GPU来执行。具体怎么做呢？核心思想来自Megatron-LM项目：把线性层按列或行切分。</p>
 
@@ -122,7 +154,7 @@
 
         <p>TP的优点是每层只需要一次all-reduce，通信开销相对可控。但它有一个硬性要求：<strong>TP节点内的GPU必须通过NVLink/NVSwitch等高速互联连接</strong>。因为每次训练step中TP需要传输大量中间激活值，如果GPU之间是普通的InfiniBand连接，通信延迟会吃掉所有性能收益。在实践中，TP通常限制在单节点内部（通常是8卡节点），不跨节点。</p>
 
-        <h3>16.3 流水线并行</h3>
+        <h2 id="sec-16-3">16.3 流水线并行</h2>
 
         <p>流水线并行（Pipeline Parallelism，简称PP）是另一种"按模型维度切分"的思路，但切分方式不同：PP把Transformer的层（layers）按深度方向分配到不同的GPU上。比如LLaMA 70B有80层，分配到4个GPU上，GPU-0负责层0-19，GPU-1负责层20-39，以此类推。</p>
 
@@ -148,7 +180,7 @@
             <strong>踩坑故事：</strong> 我第一次尝试实现流水线并行时犯了一个经典错误——没有匹配好前向和反向的micro-batch顺序。我用了GPipe的调度策略，先做完所有micro-batch的前向，再统一做反向。这就意味着在最后半个流水线周期中，所有GPU的显存里同时存着所有micro-batch的激活值。对LLaMA-13B来说，这直接导致了OOM。后来换用1F1B策略后，激活值峰值立即降到1/5。这个教训是：<strong>分布式训练中，算法选择和内存管理同样重要。</strong>
         </div>
 
-        <h3>16.4 3D并行组合策略</h3>
+        <h2 id="sec-16-4">16.4 3D并行组合策略</h2>
 
         <p>数据并行、张量并行、流水线并行各有所长。但在LLaMA这样的超大规模模型训练中，单一策略无法满足需求。Meta在训练LLaMA 65B时使用了<strong>3D并行</strong>——三种策略组合使用，在不同的维度上解决不同的问题。</p>
 
@@ -165,7 +197,58 @@
             <strong>一个直观的类比：</strong> 训练一个大模型就像写一本科教书。数据并行是你雇佣多个作者写不同的章节——每个作者都有一份完整的参考资料。张量并行是你把一章交给多个作者合写——每人负责一段，最后拼接。流水线并行是你把写作流程分成"起草-审稿-定稿"——每个环节由不同的人负责，批量化流转。最好的效率来自这三种模式同时使用。
         </div>
 
-        <h3>16.5 FSDP与ZeRO-3对比</h3>
+        <figure>
+            <svg viewBox="0 0 640 300" role="img" aria-labelledby="fig-3d-title" xmlns="http://www.w3.org/2000/svg">
+                <title id="fig-3d-title">3D 并行的三个切分维度</title>
+                <desc>集群用三个正交的维度切分：DP 沿数据批次复制模型副本，PP 沿网络层深分为多个流水线阶段，TP 把单层内部矩阵切到多张卡。三条边相乘等于总卡数。</desc>
+                <polygon points="180,240 340,240 340,120 180,120" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+                <polygon points="180,120 340,120 480,50 320,50" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+                <polygon points="340,240 480,170 480,50 340,120" fill="#d1fae5" stroke="#0d9488" stroke-width="2"/>
+                <line x1="180" y1="240" x2="320" y2="170" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 4"/>
+                <line x1="320" y1="170" x2="480" y2="170" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 4"/>
+                <line x1="320" y1="170" x2="320" y2="50" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 4"/>
+                <text x="255" y="262" font-size="13" text-anchor="middle" fill="#5b21b6">DP 数据并行（复制副本）</text>
+                <text x="398" y="205" font-size="13" fill="#0f766e">TP 张量并行（切层内矩阵）</text>
+                <text x="140" y="175" font-size="13" fill="#1d4ed8">PP 流水线（切层）</text>
+                <text x="320" y="26" font-size="12" text-anchor="middle" fill="#475569">总卡数 = DP × TP × PP（例：128 × 8 × 16 = 16384）</text>
+            </svg>
+            <figcaption><strong>图 16-1.</strong> 三个切分维度是正交的：DP 让每张卡处理不同数据、模型完整复制；PP 把层按深度切开，卡间传递激活值；TP 把单层内部的矩阵乘切开，通信最频繁。<strong>图中的数字仅为示意</strong>：总卡数 = DP × TP × PP，任选两个维度就能反推第三个，实际配置取于带宽与显存约束。</figcaption>
+        </figure>
+
+        <div class="widget" role="group" aria-label="并行维度组合计算器">
+            <label for="p-tp">张量并行 TP：<output id="p-tp-out">8</output></label>
+            <input type="range" id="p-tp" min="1" max="16" step="1" value="8">
+            <label for="p-pp">流水线并行 PP：<output id="p-pp-out">16</output></label>
+            <input type="range" id="p-pp" min="1" max="32" step="1" value="16">
+            <div class="readout" id="p-out">…</div>
+            <p>固定集群总卡数 16384（LLaMA 3 405B 的規模，见 <a href="https://arxiv.org/abs/2407.21783">LLaMA 3 论文</a>），调节 TP 与 PP 即可反推 DP 副本数。若总卡数不能被 TP×PP 整除，说明这组配置在物理上行不通。</p>
+        </div>
+        <script>
+        (function () {
+            var st = document.getElementById('p-tp');
+            var sp = document.getElementById('p-pp');
+            var tOut = document.getElementById('p-tp-out');
+            var pOut = document.getElementById('p-pp-out');
+            var out = document.getElementById('p-out');
+            var total = 16384;
+            function render() {
+                var tp = Number(st.value), pp = Number(sp.value);
+                tOut.textContent = String(tp);
+                pOut.textContent = String(pp);
+                var prod = tp * pp;
+                if (total % prod === 0) {
+                    out.textContent = 'DP = ' + total + ' / (' + tp + '×' + pp + ') = ' + (total / prod) + ' 个数据并行副本';
+                } else {
+                    out.textContent = 'TP×PP = ' + prod + ' 不能整除 ' + total + '，这组配置无法均匀分配';
+                }
+            }
+            st.addEventListener('input', render);
+            sp.addEventListener('input', render);
+            render();
+        })();
+        </script>
+
+        <h2 id="sec-16-5">16.5 FSDP与ZeRO-3对比</h2>
 
         <p>FSDP（Fully Sharded Data Parallel）是PyTorch原生的分布式训练方案。它的设计理念和ZeRO-3几乎一致——将模型参数、梯度、优化器状态分片到所有GPU上，在计算时动态收集。但FSDP和DeepSpeed ZeRO-3在实现细节上有一些值得注意的区别。</p>
 
@@ -219,7 +302,7 @@
 
         <p>选哪个？我的建议是：如果只需要ZeRO-3而不需要TP/PP，FSDP就足够了——它的API更简洁，和PyTorch生态的集成更自然。但如果需要组合TP+PP+DP进行3D并行训练，DeepSpeed是更好的选择，因为DeepSpeed对Megatron-LM的集成已经非常成熟，而FSDP的TP/PP支持还在完善中。</p>
 
-        <h3>16.6 LLaMA 3 405B训练集群</h3>
+        <h2 id="sec-16-6">16.6 LLaMA 3 405B训练集群</h2>
 
         <p>LLaMA 3 405B的训练规模放眼整个AI行业都是数一数二的。Meta公开了训练集群的详细信息，我们来看看这个"超级工程"是怎么搭建的。</p>
 
@@ -247,7 +330,7 @@ DP_SIZE = 128      # 数据并行副本数
 
         <p>注意到每张H100上只存了3GB的模型参数分片——这就是ZeRO-3和3D并行的威力。即使是405B的巨无霸模型，通过精细的切分和调度，也可以让单GPU的显存占用降到合理水平。</p>
 
-        <h3>16.7 通信瓶颈分析</h3>
+        <h2 id="sec-16-7">16.7 通信瓶颈分析</h2>
 
         <p>分布式训练中，"计算"的速度往往不是瓶颈——GPU在计算上是极快的。真正的瓶颈经常出现在通信环节。理解不同通信原语的性能特征，是优化分布式训练的基础。</p>
 
@@ -261,7 +344,7 @@ DP_SIZE = 128      # 数据并行副本数
             <strong>优化技巧：</strong> DeepSpeed实现了<strong>梯度累积通信合并</strong>（gradient accumulation communication coalescing）——将多个小通信操作合并成一个大通信操作，减少延迟开销。此外，DeepSpeed ZeRO-3还支持<strong>预取（prefetch）</strong>，在前向计算当前层时提前发起下一层参数的all-gather。这些优化可以将ZeRO-3的速度提升到DP的95%以上，同时显存节省数倍。
         </div>
 
-        <h3>16.8 训练框架对比</h3>
+        <h2 id="sec-16-8">16.8 训练框架对比</h2>
 
         <p>选择分布式训练框架是LLaMA训练中的一个重要决策。下面这张表总结了三大主流框架的特点，供你在实际项目中参考：</p>
 
@@ -334,7 +417,7 @@ DP_SIZE = 128      # 数据并行副本数
             <a href="17.html">下一章 →</a>
         </div>
 
-    </div>
+    </main>
 </div>
 </div>
 </body>
