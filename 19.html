@@ -184,7 +184,7 @@
 
         <h2 id="sec-19-3">19.3 三阶段训练策略</h2>
 
-        <p>LLaMA 3 405B的训练并不是一次性从头到尾跑完的，而是分为三个阶段，每个阶段的序列长度和数据配比都不一样。这种分阶段训练策略在LLM领域已经很常见了（比如GPT-4也用了类似的方法），但LLaMA 3做得更加精细。</p>
+        <p>LLaMA 3 405B的训练并不是一次性从头到尾跑完的，而是分为三个阶段，每个阶段的序列长度和数据配比都不一样。这种分阶段训练策略在LLM领域已经很常见了（比如GPT-4也用了类似的方法），但LLaMA 3做得更加精细。下表各阶段的序列长度（8K/8K/128K）引自 LLaMA 3 论文 §3.4 与表 4；<strong>训练步数与数据配比为教学示意（已简化）</strong>，论文未按阶段公布这些数字。</p>
 
         <table>
             <tr>
@@ -220,7 +220,7 @@
         <figure>
             <svg viewBox="0 0 640 210" role="img" aria-labelledby="fig-stages-title" xmlns="http://www.w3.org/2000/svg">
                 <title id="fig-stages-title">LLaMA 3 405B 的三阶段训练时间线</title>
-                <desc>三个阶段按训练步数划分：第一阶段约 40 万步、序列长 8K，建立基础语言能力；第二阶段约 30 万步、仍为 8K，加重代码数学推理；第三阶段约 10 万步、序列长 128K，扩展长上下文。</desc>
+                <desc>三个阶段按训练步数划分（图中步数数字为教学示意）：第一阶段约 40 万步、序列长 8K，建立基础语言能力；第二阶段约 30 万步、仍为 8K，加重代码数学推理；第三阶段约 10 万步、序列长 128K，扩展长上下文。</desc>
                 <line x1="40" y1="160" x2="610" y2="160" stroke="#94a3b8" stroke-width="1.5"/>
                 <rect x="40" y="100" width="280" height="60" rx="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
                 <text x="180" y="128" font-size="14" text-anchor="middle" fill="#5b21b6">阶段1 · 8K</text>
@@ -231,9 +231,9 @@
                 <rect x="530" y="100" width="80" height="60" rx="8" fill="#d1fae5" stroke="#0d9488" stroke-width="2"/>
                 <text x="570" y="124" font-size="13" text-anchor="middle" fill="#0f766e">阶段3</text>
                 <text x="570" y="142" font-size="11" text-anchor="middle" fill="#0f766e">128K·~10万步</text>
-                <text x="40" y="182" font-size="11" fill="#475569">块宽仅示意各阶段步数的相对比例；序列长度与步数引自 LLaMA 3 论文</text>
+                <text x="40" y="182" font-size="11" fill="#475569">块宽仅示意各阶段步数的相对比例；序列长度（8K/8K/128K）引自 LLaMA 3 论文 §3.4/表 4，步数为教学示意</text>
             </svg>
-            <figcaption><strong>图 19-1.</strong> LLaMA 3 405B 的三阶段训练：前两阶段维持 8K 序列、逐步提高代码与推理数据占比，第三阶段才把序列拉长到 128K。<strong>块宽仅示意相对步数</strong>，具体步数与序列长度见 <a href="https://arxiv.org/abs/2407.21783">LLaMA 3 论文</a>（arXiv:2407.21783，2024）表 2 附近的训练配置说明。</figcaption>
+            <figcaption><strong>图 19-1.</strong> LLaMA 3 405B 的三阶段训练：前两阶段维持 8K 序列、逐步提高代码与推理数据占比，第三阶段才把序列拉长到 128K。各阶段的序列长度（8K/8K/128K）与 MFU 引自 <a href="https://arxiv.org/abs/2407.21783">LLaMA 3 论文</a>（arXiv:2407.21783，2024）§3.4 与表 4。<strong>图中 40 万 / 30 万 / 10 万步及块宽为教学示意（已简化）——论文未按阶段公布步数</strong>，论文只给出初始预训练阶段约 1.2M steps 的学习率调度、以及长上下文阶段约 800B tokens 的总量描述。</figcaption>
         </figure>
 
         <p><strong>第一阶段：基础预训练。</strong>这个阶段使用标准的8K序列长度，数据配比遵循"质量优先"原则——大约50%英语网页文本、25%代码、10%多语言数据、10%学术论文和书籍、5%其他。这个阶段的主要目标是让模型掌握基本的语言理解能力和世界知识。由于序列长度只有8K，训练效率最高，大部分GPU时间都花在这个阶段。</p>
