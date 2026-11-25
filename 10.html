@@ -9,7 +9,7 @@
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>🦙 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 LLaMA系列概述</a></li>
@@ -41,10 +41,21 @@
             <li><a href="27.html">第27章 LLaMA 4展望与MoE架构</a></li>
             <li><a href="28.html">第28章 开源LLM生态与未来趋势</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
 
-        <h2>第10章 训练稳定性与优化器</h2>
+        <h1>第10章 训练稳定性与优化器</h1>
+
+        <nav class="toc" aria-label="本章小节导航">
+            <strong>本章导航：</strong>
+            <a href="#sec-10-1">10.1 AdamW配置</a> ·
+            <a href="#sec-10-2">10.2 学习率调度</a> ·
+            <a href="#sec-10-3">10.3 Weight Decay</a> ·
+            <a href="#sec-10-4">10.4 梯度裁剪与Loss Spike</a> ·
+            <a href="#sec-10-5">10.5 bfloat16混合精度</a> ·
+            <a href="#sec-10-6">10.6 Batch Size动态调整</a> ·
+            <a href="#sec-10-7">10.7 大规模稳定性挑战</a>
+        </nav>
 
         <p>上一章我们讲了数据工程——花了大量篇幅说明"数据质量决定了模型能力的上限"。但数据再好，如果训练的优化器设置不当、学习率调度不合理、或者训练过程中出现了loss spike导致梯度爆炸，那模型可能根本无法收敛到好的结果。</p>
 
@@ -52,9 +63,25 @@
 
         <p>这一章我们就来详细解析LLaMA系列在训练稳定性上的所有关键技术。</p>
 
-        <h3>10.1 AdamW优化器配置</h3>
+        <h2 id="sec-10-1">10.1 AdamW优化器配置</h2>
 
-        <p>LLaMA系列使用AdamW作为默认优化器。AdamW是Adam优化器的改进版，核心区别是将weight decay与自适应学习率解耦。这一点非常重要——在Adam中，weight decay被混入了自适应学习率的计算中，导致实际施加的weight decay效果在不同参数上不一致。AdamW通过把weight decay单独拿出来、在参数更新后直接施加L2正则，解决了这个问题。</p>
+        <p>LLaMA系列使用AdamW作为默认优化器。AdamW（<a href="https://arxiv.org/abs/1711.05101">Loshchilov &amp; Hutter, arXiv:1711.05101</a>）是Adam优化器的改进版，核心区别是将weight decay与自适应学习率解耦。这一点非常重要——在Adam中，weight decay被混入了自适应学习率的计算中，导致实际施加的weight decay效果在不同参数上不一致。AdamW通过把weight decay单独拿出来、在参数更新后直接施加L2正则，解决了这个问题。</p>
+
+        <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="AdamW 更新公式，可横向滚动">
+            <math display="block" aria-label="AdamW 更新：θ_t 等于 θ_{t-1} 减去学习率乘修正后一阶动量除以根号修正后二阶动量加 ε，再减去学习率乘权重衰减 λ 乘 θ_{t-1}">
+                <mrow>
+                    <msub><mi>&#x3B8;</mi><mi>t</mi></msub><mo>=</mo>
+                    <msub><mi>&#x3B8;</mi><mrow><mi>t</mi><mo>&#x2212;</mo><mn>1</mn></mrow></msub>
+                    <mo>&#x2212;</mo><mi>&#x3B7;</mi>
+                    <mfrac>
+                        <msub><mover><mi>m</mi><mo>^</mo></mover><mi>t</mi></msub>
+                        <mrow><msqrt><msub><mover><mi>v</mi><mo>^</mo></mover><mi>t</mi></msub></msqrt><mo>+</mo><mi>&#x3B5;</mi></mrow>
+                    </mfrac>
+                    <mo>&#x2212;</mo><mi>&#x3B7;</mi><mi>&#x3BB;</mi>
+                    <msub><mi>&#x3B8;</mi><mrow><mi>t</mi><mo>&#x2212;</mo><mn>1</mn></mrow></msub>
+                </mrow>
+            </math>
+        </div>
 
         <p>LLaMA的AdamW配置如下：</p>
 
@@ -109,7 +136,7 @@
 
         <p><strong>ε = 1e-5 而非默认的 1e-8。</strong> ε的作用是防止除以零，但更大的ε值实际上起到了"梯度预裁剪"的效果——它让自适应学习率对极小梯度值不那么敏感。在实践中，1e-5的ε值对于数值稳定性有一定的帮助，尤其是在使用bfloat16混合精度训练时。</p>
 
-        <h3>10.2 学习率调度策略</h3>
+        <h2 id="sec-10-2">10.2 学习率调度策略</h2>
 
         <p>LLaMA使用<strong>Cosine Decay with Warmup</strong>作为学习率调度策略。这个策略分为两个阶段：</p>
 
@@ -154,7 +181,76 @@ scheduler = get_llama_scheduler(
             <strong>实践技巧：</strong> 学习率调度的"最终值"不是0，通常是峰值学习率的10%左右。原因是：如果学习率降到0，模型在训练的最后阶段几乎不会更新，可能错过一些参数空间的优秀区域。保留一个小学习率（如3e-5 = 3e-4 × 10%），让模型在最后阶段仍然有细微的调整能力。
         </div>
 
-        <h3>10.3 Weight Decay策略</h3>
+        <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="余弦衰减学习率公式，可横向滚动">
+            <math display="block" aria-label="余弦衰减调度：当前学习率等于最小学习率加上峰值与最小值之差乘以二分之一再乘 1 加 cos(π 乘 t 除以 T)">
+                <mrow>
+                    <msub><mi>&#x3B7;</mi><mi>t</mi></msub><mo>=</mo>
+                    <msub><mi>&#x3B7;</mi><mtext>min</mtext></msub><mo>+</mo>
+                    <mo>(</mo><msub><mi>&#x3B7;</mi><mtext>max</mtext></msub><mo>&#x2212;</mo><msub><mi>&#x3B7;</mi><mtext>min</mtext></msub><mo>)</mo>
+                    <mfrac><mn>1</mn><mn>2</mn></mfrac>
+                    <mrow><mo>(</mo><mn>1</mn><mo>+</mo><mi>cos</mi><mo>(</mo>
+                    <mfrac><mi>&#x3C0;t</mi><mi>T</mi></mfrac><mo>)</mo><mo>)</mo></mrow>
+                </mrow>
+            </math>
+        </div>
+
+        <figure>
+            <svg viewBox="0 0 640 240" role="img" aria-labelledby="fig-cosine-title" xmlns="http://www.w3.org/2000/svg">
+                <title id="fig-cosine-title">带 warmup 的余弦学习率调度曲线</title>
+                <desc>横轴为训练步数，纵轴为学习率。曲线先从 0 线性上升到峰值（warmup），随后按余弦曲线平滑衰减到峰值约十分之一的最小学习率，而不是降到 0。</desc>
+                <line x1="60" y1="200" x2="610" y2="200" stroke="#94a3b8" stroke-width="1.5"/>
+                <line x1="60" y1="40" x2="60" y2="200" stroke="#94a3b8" stroke-width="1.5"/>
+                <polyline points="60,200 140,50 186,53 232,63 278,78 324,97 370,117 416,138 462,157 508,172 554,182 600,185" fill="none" stroke="#7c3aed" stroke-width="2.5"/>
+                <line x1="140" y1="50" x2="140" y2="200" stroke="#c4b5fd" stroke-width="1.5" stroke-dasharray="4 4"/>
+                <text x="140" y="36" font-size="12" text-anchor="middle" fill="#5b21b6">峰值 η_max</text>
+                <text x="100" y="150" font-size="12" fill="#5b21b6">warmup</text>
+                <text x="360" y="90" font-size="12" fill="#5b21b6">cosine decay</text>
+                <text x="600" y="212" font-size="12" text-anchor="end" fill="#0f766e">η_min ≈ 0.1·η_max ×</text>
+                <text x="60" y="24" font-size="12" fill="#475569">学习率</text>
+                <text x="610" y="224" font-size="12" text-anchor="end" fill="#475569">训练步数</text>
+            </svg>
+            <figcaption><strong>图 10-1.</strong> 带 warmup 的余弦调度曲线：先线性升到峰值 <em>η</em>_max，再按余弦函数平滑降到一个非零的最小值（通常为峰值的 10%）。<strong>曲线为公式绘制的示意</strong>，不含任何实测点；warmup 步数、峰值与总步数在各代论文里不同，见 10.2 正文。</figcaption>
+        </figure>
+
+        <div class="widget" role="group" aria-label="学习率调度计算器">
+            <label for="lr-peak">峰值学习率 η_max：<output id="lr-peak-out">0.00030</output></label>
+            <input type="range" id="lr-peak" min="0.00005" max="0.0005" step="0.00001" value="0.0003">
+            <label for="lr-step">当前步数：<output id="lr-step-out">0</output></label>
+            <input type="range" id="lr-step" min="0" max="100000" step="200" value="0">
+            <div class="readout" id="lr-out">…</div>
+            <p>固定 warmup = 2000 步、总步数 = 100000、η_min = 0.1·η_max（教学示意值）。把步数拖过 warmup 阈值，就能看到从“线性升温”切到“余弦降温”的拐点。</p>
+        </div>
+        <script>
+        (function () {
+            var sp = document.getElementById('lr-peak');
+            var ss = document.getElementById('lr-step');
+            var pOut = document.getElementById('lr-peak-out');
+            var sOut = document.getElementById('lr-step-out');
+            var out = document.getElementById('lr-out');
+            var warmup = 2000, total = 100000;
+            function render() {
+                var peak = Number(sp.value), step = Number(ss.value);
+                pOut.textContent = peak.toFixed(5);
+                sOut.textContent = String(step);
+                var minLr = 0.1 * peak, lr, phase;
+                if (step < warmup) {
+                    lr = peak * step / warmup;
+                    phase = 'warmup（线性升温）';
+                } else {
+                    var u = (step - warmup) / (total - warmup);
+                    lr = minLr + 0.5 * (peak - minLr) * (1 + Math.cos(Math.PI * u));
+                    phase = 'cosine decay';
+                }
+                out.textContent = '步 ' + step + '　η_t ≈ ' + lr.toExponential(3)
+                    + '（峰值 ' + peak.toExponential(2) + '）　' + phase;
+            }
+            sp.addEventListener('input', render);
+            ss.addEventListener('input', render);
+            render();
+        })();
+        </script>
+
+        <h2 id="sec-10-3">10.3 Weight Decay策略</h2>
 
         <p>LLaMA的weight decay为0.1——这个数值比其他常见的设置（0.01）要大一倍。更大的weight decay意味着更强的正则化效果，有助于防止过拟合。但在实践中，并不是所有参数都施加相同的weight decay。</p>
 
@@ -176,7 +272,7 @@ scheduler = get_llama_scheduler(
             不分组的话，embedding和norm参数会被施加不恰当的weight decay，导致训练不稳定。
         </div>
 
-        <h3>10.4 Gradient Clipping与Loss Spike处理</h3>
+        <h2 id="sec-10-4">10.4 Gradient Clipping与Loss Spike处理</h2>
 
         <p>在大模型训练中，loss spike（损失值突然飙升）是训练稳定性的头号威胁。一个典型的loss spike场景：训练平稳进行了几万步，loss平缓下降，突然在某一步loss从3.0跳到了50.0以上，然后模型彻底发散——这就是"灾难性发散"。</p>
 
@@ -202,7 +298,7 @@ clip.clip_grad_norm_(
             <strong>踩坑实录：</strong> 在一次大规模的分布式训练中，我们遇到了一个非常隐蔽的loss spike问题。模型在训练了5万步后突然在所有数据并行节点上同时出现loss spike，而且回滚后仍然在同一个训练步数附近再次spike。排查了整整一周后才发现问题根本不在优化器或模型——而是数据pipeline中的<strong>shuffle buffer设置不当</strong>。我们的数据预处理有一个bug：在某些数据shard的边界，shuffle buffer会被清空，导致模型连续看到了大量相同主题的数据（全是某一类特定文档），引发了数据分布的局部不平衡。修复方式是确保shuffle buffer在shard边界处部分保留，而不是完全清空。<strong>很多loss spike的根因不在模型或优化器，而在数据处理。</strong>
         </div>
 
-        <h3>10.5 混合精度训练与bfloat16</h3>
+        <h2 id="sec-10-5">10.5 混合精度训练与bfloat16</h2>
 
         <p>LLaMA的训练全程使用<strong>bfloat16（BF16）</strong>混合精度，这是与许多其他模型使用float16（FP16）的一个重要区别。</p>
 
@@ -219,7 +315,7 @@ clip.clip_grad_norm_(
             <strong>一个你可能不知道的细节：</strong> LLaMA在训练中使用了<strong>master weights</strong>技术。即使前向和反向传播使用BF16，优化器（AdamW）维护的参数状态（一阶动量、二阶动量）以及最终Parameter的更新都是在<strong>float32精度</strong>下完成的。具体做法是：模型参数同时保留BF16副本（用于前向/反向）和FP32副本（用于优化器更新），每步更新时，FP32参数更新后复制到BF16参数中。这种做法虽然增加了一倍的参数内存开销，但能显著提升训练的数值稳定性和最终模型质量。对于LLaMA 3 405B来说，master weights意味着额外的405B × 4字节 = 1.6GB的FP32参数存储——相比模型总内存消耗，这个代价是值得的。
         </div>
 
-        <h3>10.6 Batch Size动态调整</h3>
+        <h2 id="sec-10-6">10.6 Batch Size动态调整</h2>
 
         <p>LLaMA在训练过程中使用了一种<strong>batch size warmup</strong>技术——从较小的batch size开始，逐步增加到目标值。这个做法有以下考量：</p>
 
@@ -232,7 +328,7 @@ clip.clip_grad_norm_(
 
         <p>Batch size的动态调整在工程实现上需要注意——改变batch size意味着需要调整学习率（因为batch size和learning rate之间存在联动关系）。LLaMA的做法是保持<strong>token-level learning rate</strong>不变——即不管batch size怎么变，模型每处理一个token所对应的学习率更新步长是恒定的。这通过"scaling rule"实现：lr_effective = lr_base × sqrt(batch_size / batch_size_base)。</p>
 
-        <h3>10.7 LLaMA 3大规模训练中的稳定性挑战</h3>
+        <h2 id="sec-10-7">10.7 LLaMA 3大规模训练中的稳定性挑战</h2>
 
         <p>LLaMA 3的训练规模（15.6T tokens、405B参数、128K上下文）给稳定性带来了全新的挑战。Meta在论文中披露了几个特别的稳定性问题：</p>
 
@@ -280,7 +376,7 @@ def load_balancing_loss(gate_logits, num_experts, top_k=2):
             <a href="11.html">下一章 →</a>
         </div>
 
-    </div>
+    </main>
 </div>
 </div>
 </body>
