@@ -9,7 +9,7 @@
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>🦙 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 LLaMA系列概述</a></li>
@@ -41,10 +41,21 @@
             <li><a href="27.html">第27章 LLaMA 4展望与MoE架构</a></li>
             <li><a href="28.html">第28章 开源LLM生态与未来趋势</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
 
-        <h2>第7章 缩放定律与训练策略</h2>
+        <h1>第7章 缩放定律与训练策略</h1>
+
+        <nav class="toc" aria-label="本章小节导航">
+            <strong>本章导航：</strong>
+            <a href="#sec-7-1">7.1 Kaplan缩放定律</a> ·
+            <a href="#sec-7-2">7.2 Chinchilla最优分配</a> ·
+            <a href="#sec-7-3">7.3 各代策略对比</a> ·
+            <a href="#sec-7-4">7.4 学习率调度</a> ·
+            <a href="#sec-7-5">7.5 训练稳定性</a> ·
+            <a href="#sec-7-6">7.6 失败case分析</a> ·
+            <a href="#sec-7-7">7.7 效果验证</a>
+        </nav>
 
         <p>大家好，我是你们的讲师。前面几章我们一直在讨论"怎么做"——RoPE怎么做、RMSNorm怎么做、SwiGLU怎么做。从这一章开始，我们要问一个更深层的问题：<strong>"做多大、做多好、怎么做最划算"</strong>。这就是缩放定律（Scaling Law）要回答的问题。</p>
 
@@ -52,9 +63,9 @@
 
         <p>这一章我们会逐一覆盖：Kaplan缩放定律、Chinchilla最优分配、LLaMA各代的数据/参数配置、学习率调度策略，以及那些训练过程中惊心动魄的"高光时刻"和"惨痛教训"。</p>
 
-        <h3>7.1 Kaplan缩放定律回顾</h3>
+        <h2 id="sec-7-1">7.1 Kaplan缩放定律回顾</h2>
 
-        <p>2020年，OpenAI发表了一篇影响深远的论文<em>"Scaling Laws for Neural Language Models"</em>（通常被称为Kaplan缩放定律，以第一作者Jared Kaplan命名）。这篇论文的核心结论是：<strong>Transformer语言模型的交叉熵损失与模型参数量N、数据量D、计算量C之间存在光滑的幂律关系</strong>。</p>
+        <p>2020年，OpenAI发表了一篇影响深远的论文<a href="https://arxiv.org/abs/2001.08361"><em>“Scaling Laws for Neural Language Models”</em></a>（arXiv:2001.08361，通常被称为Kaplan缩放定律,以第一作者Jared Kaplan命名)。这篇论文的核心结论是:<strong>Transformer语言模型的交叉熵损失与模型参数量N、数据量D、计算量C之间存在光滑的幂律关系</strong>。</p>
 
         <p>具体来说：</p>
 
@@ -84,13 +95,31 @@ L(N, D) ≈ a / N^α + b / D^β + L_∞
             <strong>历史背景：</strong> Kaplan定律发表于2020年，当时最大的语言模型是GPT-3（175B）。OpenAI依靠这个定律来指导GPT-3的设计——即给定他们可用的算力，应该训练多大的模型、用多少数据。而LLaMA 1（2023年）则在同样的定律指导下走出了相反的路线：既然小模型+更多数据也可以达到相同的效果，那我们就用小一点的模型，但喂更多的数据。这样做的优势是：小模型推理成本更低，更容易部署。
         </div>
 
-        <h3>7.2 Chinchilla最优计算分配</h3>
+        <h2 id="sec-7-2">7.2 Chinchilla最优计算分配</h2>
 
-        <p>2022年，DeepMind对Kaplan定律发起了挑战。他们的论文<em>"Training Compute-Optimal Large Language Models"</em>（通常称为Chinchilla定律）重新审视了Kaplan的结论，并得出了不同的最优分配比例。</p>
+        <p>2022年，DeepMind对Kaplan定律发起了挑战。他们的论文<a href="https://arxiv.org/abs/2203.15556"><em>“Training Compute-Optimal Large Language Models”</em></a>（arXiv:2203.15556，通常称为Chinchilla定律）重新审视了Kaplan的结论,并得出了不同的最优分配比例。</p>
 
         <p>Chinchilla的研究使用了更系统的实验方法——他们训练了超过400个不同大小的模型（从70M到16B参数），使用不同的token数量，精确地绘制了损失函数在"参数量-数据量"平面上的等高线图。核心发现是：<strong>Kaplan定律高估了模型参数量的最优值，低估了数据量的最优值</strong>。</p>
 
         <p>Chinchilla的最优分配比例是：<strong>对于给定的计算预算C，最优的模型参数量N_opt和数据量D_opt满足D_opt ≈ 20 × N_opt</strong>。也就是说，每1B参数需要约20B tokens来训练。</p>
+
+        <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="Chinchilla 最优分配公式，可横向滚动">
+            <math display="block" aria-label="Chinchilla 最优分配：最优数据量 D 约等于 20 倍最优参数量 N；总计算量 C 约等于 6 N D">
+                <mrow>
+                    <msub><mi>D</mi><mtext>opt</mtext></msub>
+                    <mo>&#x2248;</mo>
+                    <mn>20</mn>
+                    <msub><mi>N</mi><mtext>opt</mtext></msub>
+                    <mo>,</mo>
+                    <mspace width="1.5em"/>
+                    <mi>C</mi>
+                    <mo>&#x2248;</mo>
+                    <mn>6</mn>
+                    <mi>N</mi>
+                    <mi>D</mi>
+                </mrow>
+            </math>
+        </div>
 
         <pre><code># Chinchilla Optimal 计算
 # 给定计算预算 C (FLOPs)
@@ -119,7 +148,58 @@ L(N, D) ≈ a / N^α + b / D^β + L_∞
 
         <p>但Chinchilla定律本身也在不断被挑战。LLaMA 3的405B模型使用了15.6T tokens（D/N ≈ 38.5），而这个模型并没有出现性能饱和——实际上它的表现还在持续提升。这说明Chinchilla的"20:1"可能不是绝对的硬边界，而是一个经验参考值。在超大规模训练中，<strong>更多的数据几乎总是会带来更好的性能，只是边际收益在递减</strong>。</p>
 
-        <h3>7.3 LLaMA各代的训练策略对比</h3>
+        <figure>
+            <svg viewBox="0 0 640 380" role="img" aria-labelledby="fig-chinchilla-title" xmlns="http://www.w3.org/2000/svg">
+                <title id="fig-chinchilla-title">计算最优分配：参数量与数据量的对数坐标图</title>
+                <desc>横轴为模型参数量 N（对数，1B 至 500B），纵轴为训练 token 数 D（对数，0.1T 至 30T）。一条 D 约等于 20N 的最优线从左下到右上；Chinchilla 70B 落在线上，GPT-3 175B 在线下方（欠训练），LLaMA 1 7B 与 LLaMA 3 8B 在线上方（过度训练）。</desc>
+                <line x1="80" y1="40" x2="80" y2="300" stroke="#94a3b8" stroke-width="1.5"/>
+                <line x1="80" y1="300" x2="615" y2="300" stroke="#94a3b8" stroke-width="1.5"/>
+                <line x1="214" y1="300" x2="600" y2="90" stroke="#0d9488" stroke-width="2.5" stroke-dasharray="7 5"/>
+                <text x="330" y="130" font-size="12" fill="#0f766e">D ≈ 20N（Chinchilla 最优线）</text>
+                <circle cx="512" cy="250" r="6" fill="#ef4444"/>
+                <text x="512" y="270" font-size="12" text-anchor="end" fill="#b91c1c">GPT-3 175B（欠训练, D/N≈1.7）</text>
+                <circle cx="435" cy="180" r="6" fill="#0d9488"/>
+                <text x="300" y="165" font-size="12" fill="#0f766e">Chinchilla 70B（D/N≈20）</text>
+                <circle cx="243" cy="195" r="6" fill="#7c3aed"/>
+                <text x="90" y="218" font-size="12" fill="#5b21b6">LLaMA 1 7B（D/N≈143）</text>
+                <circle cx="254" cy="70" r="6" fill="#7c3aed"/>
+                <text x="150" y="60" font-size="12" fill="#5b21b6">LLaMA 3 8B（D/N≈1950）</text>
+                <text x="80" y="26" font-size="12" fill="#475569">训练 token 数 D（对数轴）</text>
+                <text x="615" y="322" font-size="12" text-anchor="end" fill="#475569">模型参数量 N（对数轴，1B → 500B）</text>
+            </svg>
+            <figcaption><strong>图 7-1.</strong> 计算最优分配的位置关系：虚线 D ≈ 20N 是 Chinchilla 的经验最优线。GPT-3 175B 只在线上用了 300B tokens（D/N≈1.7），落在左下侧，即“模型很大但喂得太少”的欠训练区；LLaMA 系列则刻意把点推到线上方，用远超 20 倍的 token 数换取更低的推理成本。D/N 比值来自 <a href="https://arxiv.org/abs/2203.15556">Chinchilla 论文</a>、<a href="https://arxiv.org/abs/2302.13971">LLaMA 1</a> 与 <a href="https://arxiv.org/abs/2407.21783">LLaMA 3</a> 公开的训练 token 数（参见 7.3 表）。</figcaption>
+        </figure>
+
+        <div class="widget" role="group" aria-label="Chinchilla 最优预算计算器">
+            <label for="chin-c">拖动选择总计算预算 C（log₁₀ FLOPs）：<output id="chin-c-out">24.0</output></label>
+            <input type="range" id="chin-c" min="21" max="26" step="0.1" value="24">
+            <div class="readout" id="chin-out">…</div>
+            <p>按 Chinchilla 的 D ≈ 20N 与 C ≈ 6ND 联立，可得 N_opt ≈ √(C/120)、D_opt ≈ 20N_opt。把滑块从 10²¹ 拉到 10²⁶，参数量与数据量会同步放大约 300 倍——这就是“两者要按比例一起涨”的量化含义。<strong>此处数值为公式推演的教学示意</strong>，并非某个具体模型的实测结果。</p>
+        </div>
+        <script>
+        (function () {
+            var s = document.getElementById('chin-c');
+            var cOut = document.getElementById('chin-c-out');
+            var out = document.getElementById('chin-out');
+            function fmt(v, unit) {
+                var e = Math.floor(Math.log10(v));
+                return (v / Math.pow(10, e)).toFixed(2) + 'e' + e + ' ' + unit;
+            }
+            function render() {
+                var e = Number(s.value);
+                cOut.textContent = e.toFixed(1);
+                var C = Math.pow(10, e);
+                var N = Math.sqrt(C / 120);
+                var D = 20 * N;
+                out.textContent = 'C = 1.0e' + e.toFixed(1) + ' FLOPs　N_opt ≈ ' + fmt(N, '参数')
+                    + '　D_opt ≈ ' + fmt(D, 'tokens') + '　（D/N = 20）';
+            }
+            s.addEventListener('input', render);
+            render();
+        })();
+        </script>
+
+        <h2 id="sec-7-3">7.3 LLaMA各代的训练策略对比</h2>
 
         <p>让我们用一张大表来对比LLaMA各代的训练策略：</p>
 
@@ -204,7 +284,7 @@ L(N, D) ≈ a / N^α + b / D^β + L_∞
             <strong>小模型"过度训练"的红利：</strong> LLaMA 1 7B用了1T tokens（D/N=142），LLaMA 3 8B用了15.6T tokens（D/N=1950）。从Chinchilla的角度看，这些模型被极度"过度训练"了。但实际上，这些小模型因为看了太多数据，在很多下游任务上超过了更大的模型。比如LLaMA 1 7B在多个benchmark上超过了GPT-3（175B）。这种"用数据换推理效率"的策略在资源受限的场景下极其有用——你可以用一个小模型得到接近大模型的性能，但推理成本只有大模型的几十分之一。
         </div>
 
-        <h3>7.4 学习率调度策略</h3>
+        <h2 id="sec-7-4">7.4 学习率调度策略</h2>
 
         <p>LLaMA系列使用的学习率调度是标准的Cosine Decay with Warmup。这个策略包含两个阶段：</p>
 
@@ -252,7 +332,7 @@ def get_cosine_schedule_with_warmup(
 
         <p>LLaMA 3引入了一个额外的"cooldown"阶段，其实就是在训练的最后几万步中把学习率降到非常接近零（比如1e-6甚至更低）。这个阶段的目的是让模型在"低噪声"环境下微调参数。有研究表明，cooldown阶段可以让模型的最终PPL降低0.1-0.2——在大模型竞赛中，这是个不小的差距。</p>
 
-        <h3>7.5 训练稳定性考量</h3>
+        <h2 id="sec-7-5">7.5 训练稳定性考量</h2>
 
         <p>训练一个数十亿参数的大模型，最大的挑战不是模型设计，而是<strong>让训练不崩溃</strong>。LLaMA团队在论文中坦白地描述了他们遇到的训练稳定性问题和解决方案。</p>
 
@@ -282,7 +362,7 @@ def get_cosine_schedule_with_warmup(
 # θ_{t+1} = θ_t - η · (m_t / (√v_t + ε) + λ · θ_t)
 # 优势: λ 直接施加在参数上, 不受自适应学习率影响</code></pre>
 
-        <h3>7.6 训练失败的经典case分析</h3>
+        <h2 id="sec-7-6">7.6 训练失败的经典case分析</h2>
 
         <p>讲几个真实发生过的训练事故，这些故事能帮助你更好地理解"训练稳定性"这个概念在实战中的分量。</p>
 
@@ -310,7 +390,7 @@ def get_cosine_schedule_with_warmup(
             <strong>一个让很多新手崩溃的问题：</strong> 在训练LLM时，如果你发现"模型一开始训练loss就是NaN"或者"训练了几千步后突然变成NaN"，90%的概率是数据问题——某个数据样本包含异常值导致模型崩溃了。排查方法很简单：从训练数据中拿出一个子集（几百个样本），如果在这个小数据集上训练正常，那就说明是数据集中某个样本有bug。用二分法不断缩小数据集的范围，可以快速定位到问题样本。我自己的经验是，问题样本通常是：大量不可见字符、过长的无空格序列、或非文本二进制数据。
         </div>
 
-        <h3>7.7 不同缩放策略的实际效果验证</h3>
+        <h2 id="sec-7-7">7.7 不同缩放策略的实际效果验证</h2>
 
         <p>我们已经有足够的公开数据来验证不同缩放策略的实际效果。下面这张表汇总了一些关键模型的训练配置和性能：</p>
 
@@ -399,7 +479,7 @@ def get_cosine_schedule_with_warmup(
             <a href="08.html">下一章 →</a>
         </div>
 
-    </div>
+    </main>
 </div>
 </div>
 </body>
