@@ -9,7 +9,7 @@
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>🦙 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 LLaMA系列概述</a></li>
@@ -41,16 +41,28 @@
             <li><a href="27.html">第27章 LLaMA 4展望与MoE架构</a></li>
             <li><a href="28.html">第28章 开源LLM生态与未来趋势</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
 
-        <h2>第25章 推理部署方案</h2>
+        <h1>第25章 推理部署方案</h1>
+
+        <nav class="toc" aria-label="本章小节导航">
+            <strong>本章导航：</strong>
+            <a href="#sec-25-1">25.1 框架全景对比</a> ·
+            <a href="#sec-25-2">25.2 vLLM与PagedAttention</a> ·
+            <a href="#sec-25-3">25.3 Ollama</a> ·
+            <a href="#sec-25-4">25.4 llama.cpp与GGUF</a> ·
+            <a href="#sec-25-5">25.5 推理优化技术</a> ·
+            <a href="#sec-25-6">25.6 部署决策树</a> ·
+            <a href="#sec-25-7">25.7 API设计最佳实践</a> ·
+            <a href="#sec-25-8">25.8 性能对比与选型</a>
+        </nav>
 
         <p>经过前面24章的学习，你已经理解了LLaMA的架构、训练方法和微调技巧。但"能跑"不等于"能上线"。一个模型在开发机上生成一个句子需要3秒，和在生产环境中处理100个并发请求每个只需要200毫秒，中间隔着一整套推理优化和部署技术栈。</p>
 
         <p>这一章我们不讨论算法原理——那些在前面的章节都讲过了。这一章是纯粹的工程实战：面对vLLM、Ollama、llama.cpp、TensorRT-LLM、TGI这些推理框架，你应该怎么选？不同的部署场景（实时对话、批处理、边缘设备）应该用哪套方案？生产环境中遇到显存OOM和请求排队又该怎么处理？</p>
 
-        <h3>25.1 推理框架全景对比</h3>
+        <h2 id="sec-25-1">25.1 推理框架全景对比</h2>
 
         <p>2025年的LLM推理框架生态已经相当成熟，每个框架都有自己擅长的场景。先来看一张全景对比表：</p>
 
@@ -107,13 +119,27 @@
 
         <p>选择的决策依据主要看三个维度：<strong>你的GPU（型号、数量、显存）</strong>、<strong>你的QPS要求</strong>、<strong>你的延迟要求</strong>。下面我们来逐一深入每个框架。</p>
 
-        <h3>25.2 vLLM：PagedAttention 与高并发推理</h3>
+        <h2 id="sec-25-2">25.2 vLLM：PagedAttention 与高并发推理</h2>
 
         <p>vLLM是目前最流行的开源推理框架，其核心创新是<strong>PagedAttention</strong>——将KV Cache分页管理，解决了传统推理中显存碎片化和利用率低的问题。</p>
 
         <p>在标准实现中，LLM推理的KV Cache是预先分配固定大小的连续显存块。但问题是，一个序列的实际长度在生成完成之前是未知的，所以你必须按最大长度（如4096 tokens）来分配。这导致两个问题：第一，很多序列的实际长度远小于最大值，造成了显存浪费；第二，显存碎片化严重，多个请求的KV Cache大小不同，分配和释放后留下大量不可用的小碎片。</p>
 
         <p>PagedAttention将KV Cache划分为固定大小的"页"（page），每页可以存储若干个token的KV值。不同序列的页可以散落在显存的任意位置，通过页表来索引。这就跟操作系统的虚拟内存管理是一个道理——解决了外部碎片问题，实现了接近100%的显存利用率。</p>
+
+        <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="KV Cache 显存公式，可横向滚动">
+            <math display="block" aria-label="KV Cache 显存约为 2 乘层数 乘 KV 头数 乘 每头维度 乘 序列长度 乘 批大小 乘 每元素字节数">
+                <mrow>
+                    <msub><mi>M</mi><mtext>KV</mtext></msub><mo>=</mo>
+                    <mn>2</mn><mo>&#x22C5;</mo>
+                    <msub><mi>n</mi><mtext>layer</mtext></msub><mo>&#x22C5;</mo>
+                    <msub><mi>n</mi><mtext>kv</mtext></msub><mo>&#x22C5;</mo>
+                    <msub><mi>d</mi><mtext>head</mtext></msub><mo>&#x22C5;</mo>
+                    <mi>L</mi><mo>&#x22C5;</mo><mi>b</mi><mo>&#x22C5;</mo>
+                    <msub><mi>b</mi><mtext>elem</mtext></msub>
+                </mrow>
+            </math>
+        </div>
 
         <pre><code># vLLM 部署 LLaMA 3-8B
 # 安装: pip install vllm
@@ -157,10 +183,76 @@ for chunk in stream:
         <p>vLLM的核心优势还包括<strong>continuous batching</strong>——在生成过程中动态调度批次。传统批处理必须等整个批次的所有序列都完成才能进行下一次调度，而continuous batching可以在序列粒度上做调度：某个序列生成到EOS后就立即腾出位置给新请求，不影响还在生成的序列。这使得vLLM在高并发场景下的吞吐量可以达到普通HuggingFace实现的10-20倍。</p>
 
         <div class="highlight">
-            <strong>性能数据：</strong> 在单张A100-80G上部署LLaMA 3-8B，vLLM可以在8K上下文下达到约2500 tokens/s的生成吞吐量（batch size = 64），同时首token延迟控制在100ms以内。对比naive的HuggingFace实现，相同硬件下的吞吐量约150 tokens/s。vLLM的吞吐量优势随着并发数增大而更加明显。
+            <strong>性能数据：</strong> 在单张A100-80G上部署LLaMA 3-8B，vLLM可以在8K上下文下达到约2500 tokens/s的生成吞吐量（batch size = 64），同时首token延迟控制在100ms以内。对比naive的HuggingFace实现，相同硬件下的吞吐量约150 tokens/s。vLLM的吞吐量优势随着并发数增大而更加明显。<br><strong>注：</strong>以上数字为量级示意（教学简化），实际吞吐随硬件型号、批大小、序列长度分布与量化方式而变，请以官方 benchmark 为准，不要当作固定指标。
         </div>
 
-        <h3>25.3 Ollama：个人开发者的最佳选择</h3>
+        <figure>
+            <svg viewBox="0 0 640 300" role="img" aria-labelledby="fig-paged-title" xmlns="http://www.w3.org/2000/svg">
+                <title id="fig-paged-title">PagedAttention 的页表映射</title>
+                <desc>序列的逻辑页 P0、P1、P2 不需要连续存放；页表把它们分别指向物理显存里任意位置的块，未使用的块保持空闲。这样分配和释放都按固定大小的页进行，避免了外部碎片。</desc>
+                <defs>
+                    <marker id="fig-paged-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                        <path d="M0,0 L10,5 L0,10 z" fill="#7c3aed"/>
+                    </marker>
+                </defs>
+                <text x="20" y="30" font-size="12" fill="#475569">序列的逻辑页</text>
+                <rect x="40" y="50" width="60" height="40" rx="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+                <text x="70" y="75" font-size="13" text-anchor="middle" fill="#5b21b6">P0</text>
+                <rect x="40" y="110" width="60" height="40" rx="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+                <text x="70" y="135" font-size="13" text-anchor="middle" fill="#5b21b6">P1</text>
+                <rect x="40" y="170" width="60" height="40" rx="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+                <text x="70" y="195" font-size="13" text-anchor="middle" fill="#5b21b6">P2</text>
+                <text x="340" y="30" font-size="12" fill="#475569">物理显存块（非连续）</text>
+                <rect x="340" y="70" width="80" height="56" rx="8" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2"/>
+                <text x="380" y="103" font-size="12" text-anchor="middle" fill="#64748b">空闲</text>
+                <rect x="420" y="70" width="80" height="56" rx="8" fill="#d1fae5" stroke="#0d9488" stroke-width="2"/>
+                <text x="460" y="103" font-size="12" text-anchor="middle" fill="#0f766e">P0</text>
+                <rect x="500" y="70" width="80" height="56" rx="8" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2"/>
+                <text x="540" y="103" font-size="12" text-anchor="middle" fill="#64748b">空闲</text>
+                <rect x="340" y="150" width="80" height="56" rx="8" fill="#d1fae5" stroke="#0d9488" stroke-width="2"/>
+                <text x="380" y="183" font-size="12" text-anchor="middle" fill="#0f766e">P1</text>
+                <rect x="420" y="150" width="80" height="56" rx="8" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2"/>
+                <text x="460" y="183" font-size="12" text-anchor="middle" fill="#64748b">空闲</text>
+                <rect x="500" y="150" width="80" height="56" rx="8" fill="#d1fae5" stroke="#0d9488" stroke-width="2"/>
+                <text x="540" y="183" font-size="12" text-anchor="middle" fill="#0f766e">P2</text>
+                <line x1="100" y1="70" x2="418" y2="95" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-paged-arrow)"/>
+                <line x1="100" y1="130" x2="338" y2="175" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-paged-arrow)"/>
+                <line x1="100" y1="190" x2="498" y2="175" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-paged-arrow)"/>
+            </svg>
+            <figcaption><strong>图 25-1.</strong> PagedAttention 的页表映射：逻辑上连续的 P0/P1/P2 可以落在物理显存里任意空闲的块，未用的块留给其它序列。这样分配与释放都以固定大小的“页”为单位，从根源上消除了连续分配造成的外部碎片。机制描述见 <a href="https://arxiv.org/abs/2309.06180">vLLM / PagedAttention 论文</a>（arXiv:2309.06180，2023）。</figcaption>
+        </figure>
+
+        <div class="widget" role="group" aria-label="KV Cache 显存估算">
+            <label for="kv-seq">序列长度 L（token）：<output id="kv-seq-out">8192</output></label>
+            <input type="range" id="kv-seq" min="512" max="32768" step="512" value="8192">
+            <label for="kv-batch">并发批大小 b：<output id="kv-batch-out">1</output></label>
+            <input type="range" id="kv-batch" min="1" max="64" step="1" value="1">
+            <div class="readout" id="kv-out">…</div>
+            <p>按 LLaMA 3-8B 的配置（32 层、GQA 下 8 个 KV 头、每头维度 128、BF16 每元素 2 字节）估算：单 token 的 KV Cache = 2×32×8×128×2 ≈ 128 KB。这就是为什么上下文越长、并发越高越吃显存，也是 GQA（第 8 章）与 PagedAttention 的共同动机。</p>
+        </div>
+        <script>
+        (function () {
+            var ss = document.getElementById('kv-seq');
+            var sb = document.getElementById('kv-batch');
+            var sOut = document.getElementById('kv-seq-out');
+            var bOut = document.getElementById('kv-batch-out');
+            var out = document.getElementById('kv-out');
+            var bytesPerToken = 2 * 32 * 8 * 128 * 2;
+            function render() {
+                var L = Number(ss.value), b = Number(sb.value);
+                sOut.textContent = String(L);
+                bOut.textContent = String(b);
+                var gb = bytesPerToken * L * b / 1e9;
+                out.textContent = '单 token KV ≈ ' + (bytesPerToken / 1024).toFixed(0) + ' KB'
+                    + '　总计 ≈ ' + gb.toFixed(2) + ' GB（L=' + L + ', b=' + b + '）';
+            }
+            ss.addEventListener('input', render);
+            sb.addEventListener('input', render);
+            render();
+        })();
+        </script>
+
+        <h2 id="sec-25-3">25.3 Ollama：个人开发者的最佳选择</h2>
 
         <p>如果你只是想在自己的电脑上跑LLaMA做实验，或者搭建一个个人用的AI助手，Ollama是上手最快、体验最好的方案。它底层基于llama.cpp，但封装成了一套极简的命令行工具。</p>
 
@@ -207,7 +299,7 @@ curl http://localhost:11434/v1/chat/completions \
 
         <p>Ollama的局限性在于不适合高并发生产环境。它是单机单服务的架构，缺乏vLLM那样的高级调度策略。对于个人使用或小团队内部的部署来说完全够用，但如果要支撑数十万的DAU，还是建议使用vLLM或TensorRT-LLM。</p>
 
-        <h3>25.4 llama.cpp 与 GGUF 格式</h3>
+        <h2 id="sec-25-4">25.4 llama.cpp 与 GGUF 格式</h2>
 
         <p>llama.cpp是LLM推理领域的一个革命性项目。它的最大贡献是实现了<strong>纯CPU推理</strong>——这意味着你不需要昂贵的NVIDIA GPU就能运行LLaMA模型。</p>
 
@@ -290,7 +382,7 @@ make -j
             <strong>使用建议：</strong> llama.cpp在Apple Silicon（M1/M2/M3/M4）上的表现尤其出色。因为Apple统一内存架构允许GPU直接访问系统内存，一个M2 Ultra（192GB统一内存）甚至可以运行LLaMA 3-70B的Q4量化版本，这在同等价位的NVIDIA硬件上是做不到的。对Mac用户来说，llama.cpp + GGUF是目前性价比最高的本地LLM方案。
         </div>
 
-        <h3>25.5 推理优化技术</h3>
+        <h2 id="sec-25-5">25.5 推理优化技术</h2>
 
         <p>除了框架层面的优化，还有几种通用的推理优化技术值得了解：</p>
 
@@ -307,7 +399,7 @@ python -m vllm.entrypoints.openai.api_server \
 
         <p><strong>KV Cache 量化</strong>：长上下文推理时，KV Cache的显存消耗是最大的瓶颈。以8B模型、128K上下文为例，仅KV Cache就需要约32GB显存（bfloat16精度）。通过将KV Cache量化为FP8或INT8，可以将其减半（16GB或8GB），而质量损失极小。目前vLLM和TensorRT-LLM都支持KV Cache量化。</p>
 
-        <h3>25.6 部署场景选择决策树</h3>
+        <h2 id="sec-25-6">25.6 部署场景选择决策树</h2>
 
         <p>面对这么多框架和技术，选择困难症犯了怎么办？下面这个决策树可以帮助你快速定位最适合的部署方案：</p>
 
@@ -332,7 +424,7 @@ python -m vllm.entrypoints.openai.api_server \
 
         <p>对于一个典型的SaaS产品来说，推荐的部署架构是：<strong>vLLM作为推理引擎 + OpenAI兼容API + 水平扩展</strong>。vLLM提供了最高的性能和最成熟的生态，OpenAI兼容API让你的应用代码与模型解耦，将来切换不同模型时客户端代码完全不需要修改。</p>
 
-        <h3>25.7 API 设计最佳实践</h3>
+        <h2 id="sec-25-7">25.7 API 设计最佳实践</h2>
 
         <p>在生产环境中部署LLaMA模型时，API的设计质量直接决定了系统的可用性和可维护性。以下是几条核心最佳实践：</p>
 
@@ -370,7 +462,7 @@ while estimate_tokens(messages) > MAX_TOKENS and len(messages) > 1:
             解决方案是三层限制：<strong>应用层</strong>限制每轮对话的消息数（最多20轮）；<strong>推理层</strong>设置 <code>max_num_batched_tokens</code> 限制单批次总token数；<strong>队列层</strong>设置超时机制，对于等待超过30秒的请求直接返回错误（让客户端重试）。从那以后，服务再也没因为这个原因挂过。
         </div>
 
-        <h3>25.8 性能对比与选型建议</h3>
+        <h2 id="sec-25-8">25.8 性能对比与选型建议</h2>
 
         <p>最后，我们用一个实际场景来对比各框架的性能差异。测试环境：单张A100-80G，LLaMA 3-8B，8K上下文，请求输入长度1024 tokens，输出长度256 tokens。</p>
 
@@ -443,7 +535,7 @@ while estimate_tokens(messages) > MAX_TOKENS and len(messages) > 1:
             <a href="26.html">下一章 →</a>
         </div>
 
-    </div>
+    </main>
 </div>
 </div>
 </body>
