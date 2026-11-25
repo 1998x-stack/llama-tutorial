@@ -9,7 +9,7 @@
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>🦙 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 LLaMA系列概述</a></li>
@@ -41,10 +41,22 @@
             <li><a href="27.html">第27章 LLaMA 4展望与MoE架构</a></li>
             <li><a href="28.html">第28章 开源LLM生态与未来趋势</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
 
-        <h2>第13章 RLHF全流程</h2>
+        <h1>第13章 RLHF全流程</h1>
+
+        <nav class="toc" aria-label="本章小节导航">
+            <strong>本章导航：</strong>
+            <a href="#sec-13-1">13.1 RLHF整体框架</a> ·
+            <a href="#sec-13-2">13.2 奖励模型</a> ·
+            <a href="#sec-13-3">13.3 奖励模型训练细节</a> ·
+            <a href="#sec-13-4">13.4 PPO训练流程</a> ·
+            <a href="#sec-13-5">13.5 Ghost Attention</a> ·
+            <a href="#sec-13-6">13.6 边际奖励</a> ·
+            <a href="#sec-13-7">13.7 各阶段效果对比</a> ·
+            <a href="#sec-13-8">13.8 工程挑战</a>
+        </nav>
 
         <p>上一章我们讲了SFT——通过监督学习让基座模型学会了对话的格式和风格。但SFT有一个根本性的局限：它只能学习"标注员认为正确的回答"，而标注员的判断并不总能反映真实的用户偏好。你可能有过这样的体验：一个模型给出的回答在语法上完全正确、格式上无可挑剔，但就是"差点意思"——不够深入、不够体贴、不够符合你的实际需求。</p>
 
@@ -56,7 +68,7 @@
             <strong>RLHF的核心哲学：</strong> SFT是在"模仿老师"（标注员写的标准答案），而RLHF是在"理解用户"（通过偏好信号学习用户的真实需求）。前者学的是"形式"，后者学的是"实质"。
         </div>
 
-        <h3>13.1 RLHF整体框架</h3>
+        <h2 id="sec-13-1">13.1 RLHF整体框架</h2>
 
         <p>LLaMA 2的RLHF流程分为三个步骤：</p>
 
@@ -92,7 +104,7 @@
 
         <p>这里有一个需要重点理解的概念：PPO训练中同时涉及<strong>四个模型</strong>——策略模型（主模型，正在被训练）、参考模型（固定参数的策略模型副本，用于KL散度约束）、奖励模型（提供反馈信号）、价值模型（用于PPO的advantage估计）。四个模型同时加载到内存中，这使得RLHF训练的显存开销很大——大约是SFT训练的2-3倍。</p>
 
-        <h3>13.2 奖励模型（Reward Model）</h3>
+        <h2 id="sec-13-2">13.2 奖励模型（Reward Model）</h2>
 
         <p>奖励模型是由<strong>SFT模型初始化</strong>而来，但做了一个关键修改：将最后一层（lm_head，用于预测下一个token）替换为一个<strong>标量输出头</strong>，输出一个实数作为"回答质量评分"。</p>
 
@@ -108,11 +120,31 @@
             <strong>数据收集的一个细节：</strong> LLaMA 2在收集偏好数据时采取了一种特殊策略——他们不是让标注员"从几个回答中选出最好的"，而是让标注员"逐一评分，然后比较分值"。具体来说，每个回答在1-7分之间打分，然后在这组回答中选择chosen和rejected。这样做的好处是：当两个回答质量接近时（比如4分和5分），虽然"5分"被选为chosen，但它们之间的差异并不大，反映在损失函数中就是一个较小的梯度更新。如果直接让标注员"二选一"，差别的粒度会更粗。
         </div>
 
-        <h3>13.3 奖励模型训练细节</h3>
+        <h2 id="sec-13-3">13.3 奖励模型训练细节</h2>
 
         <p>奖励模型使用<strong>Bradley-Terry模型</strong>来定义损失函数。Bradley-Terry模型最初用于成对比较（比如体育比赛中的排名），它假设每个选项有一个隐含的"强度"参数，两个选项被选中的概率之比由它们的强度差决定。</p>
 
         <p>在LLaMA的场景中，Bradley-Terry损失函数的数学形式是：</p>
+
+        <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="Bradley-Terry 损失公式，可横向滚动">
+            <math display="block" aria-label="Bradley-Terry 损失：在优选与劣质回答配对上取期望，负对数 sigmoid 作用于优胜奖励与劣质奖励之差">
+                <mrow>
+                    <mi>L</mi><mo>=</mo><mo>&#x2212;</mo>
+                    <msub>
+                        <mi>&#x1D53C;</mi>
+                        <mrow><mo>(</mo><mi>x</mi><mo>,</mo><msub><mi>y</mi><mi>w</mi></msub><mo>,</mo><msub><mi>y</mi><mi>l</mi></msub><mo>)</mo><mo>&#x223C;</mo><mi>D</mi></mrow>
+                    </msub>
+                    <mo>[</mo>
+                    <mi>log</mi>
+                    <mi>&#x3C3;</mi>
+                    <mo>(</mo>
+                    <mi>r</mi><mo>(</mo><mi>x</mi><mo>,</mo><msub><mi>y</mi><mi>w</mi></msub><mo>)</mo>
+                    <mo>&#x2212;</mo>
+                    <mi>r</mi><mo>(</mo><mi>x</mi><mo>,</mo><msub><mi>y</mi><mi>l</mi></msub><mo>)</mo>
+                    <mo>)</mo><mo>]</mo>
+                </mrow>
+            </math>
+        </div>
 
         <pre><code># 奖励模型训练的损失函数
 
@@ -155,7 +187,67 @@ def reward_model_loss(reward_chosen, reward_rejected):
             <strong>踩坑实录：</strong> 我们在自己的项目中尝试训练奖励模型时，遇到了一个典型的"奖励作弊"问题。奖励模型学会了利用数据中的<strong>虚假关联</strong>来预测偏好——比如，模型发现更长的回答往往被标注为chosen，于是它开始给长回答打高分，而不论内容质量如何。还有一个更隐蔽的问题：奖励模型学会了通过回答中的特定词汇（"当然"、"很高兴为您"等礼貌用语）来判断质量，因为这些词汇在人工撰写的回答中出现频率更高。这些虚假关联导致奖励模型给出的分数严重偏离真实质量。解决方案是：<strong>在训练数据中注意控制这些混淆变量的分布</strong>——确保chosen和rejected回答在长度、风格等方面的分布是匹配的，消除这些非质量因素的干扰。
         </div>
 
-        <h3>13.4 PPO训练流程</h3>
+        <figure>
+            <svg viewBox="0 0 640 300" role="img" aria-labelledby="fig-rm-title" xmlns="http://www.w3.org/2000/svg">
+                <title id="fig-rm-title">奖励模型的成对打分与 Bradley-Terry 概率</title>
+                <desc>同一个 prompt 的两个回答 y_w 与 y_l 分别送入奖励模型 RM，得到标量分数 r_w 和 r_l；两者相减得到差值 Δr，再经 sigmoid 变成 y_w 更优的概率。训练目标就是让这个概率尽量高。</desc>
+                <defs>
+                    <marker id="fig-rm-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                        <path d="M0,0 L10,5 L0,10 z" fill="#7c3aed"/>
+                    </marker>
+                </defs>
+                <rect x="20" y="50" width="120" height="44" rx="10" fill="#d1fae5" stroke="#0d9488" stroke-width="2"/>
+                <text x="80" y="78" font-size="13" text-anchor="middle" fill="#0f766e">y_w（chosen）</text>
+                <rect x="20" y="190" width="120" height="44" rx="10" fill="#fee2e2" stroke="#ef4444" stroke-width="2"/>
+                <text x="80" y="218" font-size="13" text-anchor="middle" fill="#b91c1c">y_l（rejected）</text>
+                <rect x="185" y="120" width="110" height="44" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+                <text x="240" y="148" font-size="13" text-anchor="middle" fill="#5b21b6">奖励模型 RM</text>
+                <rect x="335" y="50" width="80" height="44" rx="10" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2"/>
+                <text x="375" y="78" font-size="14" text-anchor="middle" fill="#075985">r_w</text>
+                <rect x="335" y="190" width="80" height="44" rx="10" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2"/>
+                <text x="375" y="218" font-size="14" text-anchor="middle" fill="#075985">r_l</text>
+                <circle cx="465" cy="120" r="20" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+                <text x="465" y="127" font-size="18" text-anchor="middle" fill="#92400e">−</text>
+                <rect x="500" y="98" width="110" height="44" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+                <text x="555" y="126" font-size="13" text-anchor="middle" fill="#5b21b6">σ(Δr)</text>
+                <line x1="140" y1="72" x2="183" y2="128" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-rm-arrow)"/>
+                <line x1="140" y1="212" x2="183" y2="156" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-rm-arrow)"/>
+                <line x1="295" y1="142" x2="333" y2="80" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-rm-arrow)"/>
+                <line x1="295" y1="142" x2="333" y2="204" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-rm-arrow)"/>
+                <line x1="415" y1="72" x2="447" y2="108" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-rm-arrow)"/>
+                <line x1="415" y1="212" x2="447" y2="132" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-rm-arrow)"/>
+                <line x1="485" y1="120" x2="498" y2="120" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-rm-arrow)"/>
+                <text x="555" y="160" font-size="11" text-anchor="middle" fill="#475569">= P(y_w 更优)</text>
+                <text x="20" y="268" font-size="11" fill="#475569">RM 输出序列级标量；训练只让 r_w − r_l 变大，不约束绝对分数</text>
+            </svg>
+            <figcaption><strong>图 13-1.</strong> 奖励模型的成对打分：同一 prompt 的优胜与劣质回答各得一个标量分，两者之差经 sigmoid 得到“择优概率”。理解这一点很重要——训练只关心 <strong>分数差</strong>（r_w − r_l），并不关心绝对分值，因此奖励模型无法直接用作“质量打分器”去比较不同 prompt 的回答。公式与做法见 <a href="https://arxiv.org/abs/2307.09288">LLaMA 2 论文</a>（arXiv:2307.09288，2023）。</figcaption>
+        </figure>
+
+        <div class="widget" role="group" aria-label="Bradley-Terry 概率计算器">
+            <label for="bt-dr">调整优胜与劣质的分数差 Δr：<output id="bt-dr-out">0.0</output></label>
+            <input type="range" id="bt-dr" min="-5" max="5" step="0.1" value="0">
+            <div class="readout" id="bt-out">…</div>
+            <p>σ(Δr) = 1 / (1 + e^(−Δr))。Δr = 0 时概率正好 0.5；Δr 为负意味着当前模型反而更偏好被标注为劣质的回答，损失 −log σ(Δr) 会迅速变大。这个 sigmoid 形状也解释了为什么偏好数据里“差距大”的样本提供的梯度信号更强。</p>
+        </div>
+        <script>
+        (function () {
+            var s = document.getElementById('bt-dr');
+            var dOut = document.getElementById('bt-dr-out');
+            var out = document.getElementById('bt-out');
+            function render() {
+                var dr = Number(s.value);
+                dOut.textContent = dr.toFixed(1);
+                var p = 1 / (1 + Math.exp(-dr));
+                var loss = -Math.log(p);
+                out.textContent = 'Δr = ' + dr.toFixed(1) + '　σ(Δr) = ' + p.toFixed(4)
+                    + '　损失 −log σ = ' + loss.toFixed(4);
+            }
+            s.addEventListener('input', render);
+            render();
+        })();
+        </script>
+
+        <h2 id="sec-13-4">13.4 PPO训练流程</h2>
 
         <p>PPO（Proximal Policy Optimization）是RLHF中使用的强化学习算法。LLaMA 2的PPO实现是标准PPO的变体，有几个关键的设计选择。</p>
 
@@ -195,7 +287,7 @@ R_total = R_score - β * kl_div
 
         <p>值得注意的是，LLaMA 2对有用性和安全性使用了不同的KL惩罚系数——安全性优化的KL系数大了10倍。这意味着在安全性优化上，Meta采取了更加保守的策略：宁可少优化一些安全性，也不要让模型的自然语言行为发生剧烈变化。安全性的"激进优化"可能带来意想不到的副作用——比如模型变得过度谨慎，拒绝回答很多本应正常回答的问题。</p>
 
-        <h3>13.5 Ghost Attention（GAtt）</h3>
+        <h2 id="sec-13-5">13.5 Ghost Attention（GAtt）</h2>
 
         <p>Ghost Attention（GAtt）是LLaMA 2论文中提出的一个创新技术，专门解决多轮对话中的<strong>指令保持</strong>问题。</p>
 
@@ -230,7 +322,7 @@ R_total = R_score - β * kl_div
             <strong>关于GAtt的更深远思考：</strong> GAtt的成功揭示了一个重要的洞见——<strong>LLM的"记忆"问题可以通过训练阶段的注入来解决，而非依赖推理阶段的prompt工程。</strong>很多人遇到"模型忘记指令"的问题时，第一反应是"加长system prompt"或"在每一轮重复指令"。但GAtt告诉我们：在训练中让模型习惯在每一轮都看到指令信息，效果远好于在推理时临时添加。这实际上是"训练时模拟推理场景"的一个典型案例。
         </div>
 
-        <h3>13.6 边际奖励与多轮策略</h3>
+        <h2 id="sec-13-6">13.6 边际奖励与多轮策略</h2>
 
         <p>LLaMA 2还使用了一个叫做<strong>边际奖励（Margin Reward）</strong>的技术。在标准的PPO中，奖励模型只对最终的完整回答打分。但LLaMA 2在训练中同时引入了<strong>每轮对话的边际奖励</strong>——即单独对多轮对话中的每一轮回答分别打分。</p>
 
@@ -238,7 +330,7 @@ R_total = R_score - β * kl_div
 
         <p>为了实现边际奖励，LLaMA 2的标注员在收集偏好数据时，不仅对整体回答打分，还对多轮对话的每一轮进行单独的偏好标注。这个标注成本显然更高——但对于多轮对话质量的提升非常关键。</p>
 
-        <h3>13.7 RLHF各阶段效果对比</h3>
+        <h2 id="sec-13-7">13.7 RLHF各阶段效果对比</h2>
 
         <p>LLaMA 2论文报告了从基座模型到完整Chat模型的不同版本在人工评估中的表现：</p>
 
@@ -295,7 +387,7 @@ R_total = R_score - β * kl_div
             <strong>实用启示：</strong> 对于资源有限的团队，不需要一开始就追求5轮迭代。先做1轮RLHF，效果通常已经比纯SFT好很多。然后可以根据预算决定是否继续迭代。关键是：<strong>每轮迭代的数据应该是当前模型容易出错、且能带来最大改善的case</strong>——"最难啃的骨头先啃"是一个很好的策略。
         </div>
 
-        <h3>13.8 多轮RLHF迭代的工程挑战</h3>
+        <h2 id="sec-13-8">13.8 多轮RLHF迭代的工程挑战</h2>
 
         <p>多轮RLHF迭代虽然效果好，但工程成本很高。每一轮迭代包含以下工作：</p>
 
@@ -320,7 +412,7 @@ R_total = R_score - β * kl_div
             <a href="14.html">下一章 →</a>
         </div>
 
-    </div>
+    </main>
 </div>
 </div>
 </body>
