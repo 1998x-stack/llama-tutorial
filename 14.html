@@ -9,7 +9,7 @@
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>🦙 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 LLaMA系列概述</a></li>
@@ -42,21 +42,32 @@
             <li><a href="28.html">第28章 开源LLM生态与未来趋势</a></li>
         </ul>
     </div>
-    <div class="main-content">
+    <main class="main-content" id="content">
 
-        <h2>第14章 安全对齐与幻觉抑制</h2>
+        <h1>第14章 安全对齐与幻觉抑制</h1>
+
+        <nav class="toc" aria-label="本章小节导航">
+            <strong>本章导航：</strong>
+            <a href="#sec-14-1">14.1 安全挑战概览</a> ·
+            <a href="#sec-14-2">14.2 LLaMA 2 安全对齐</a> ·
+            <a href="#sec-14-3">14.3 幻觉分类与成因</a> ·
+            <a href="#sec-14-4">14.4 幻觉抑制技术</a> ·
+            <a href="#sec-14-5">14.5 安全评估体系</a> ·
+            <a href="#sec-14-6">14.6 LLaMA 3 安全升级</a> ·
+            <a href="#sec-14-7">14.7 安全与有用性平衡</a>
+        </nav>
 
         <p>讲完了RLHF，我们终于可以聊一个每个用户和开发者都必须面对的话题——<strong>安全性</strong>。如果说前面几章我们关注的是"怎么让模型更有用"，那么这一章关注的是"怎么确保模型不会造成伤害"。</p>
 
         <p>大模型的安全问题不是杞人忧天。LLaMA 2发布后不久，社区就发现了多种"越狱"prompt可以让模型输出有害内容。LLaMA 3虽然做了更多的安全投入，但同样面临着幻觉的困扰——模型会用非常自信的语气说出一段完全错误的内容。这些问题不解决，模型就无法真正投入生产环境。</p>
 
-        <p>这一章我们来系统学习LLaMA系列在安全对齐和幻觉抑制上的技术体系。</p>
+        <p>这一章我们来系统学习LLaMA系列在安全对齐和幻觉抑制上的技术体系。本章数据均取自 <a href="https://arxiv.org/abs/2307.09288"><em>Llama 2: Open Foundation and Fine-Tuned Chat Models</em></a>（Touvron 等，arXiv:2307.09288）；LLaMA 3 的安全做法参考其技术报告（arXiv:2407.21783）。</p>
 
         <div class="highlight">
             <strong>一个前提认知：</strong> 安全对齐（Safety Alignment）和幻觉抑制（Hallucination Mitigation）是相关的但不完全相同的问题。安全对齐关注的是"模型不应该做什么"——不生成有害内容、不泄露隐私、不强化偏见。幻觉抑制关注的是"模型不应该说什么假话"——不编造事实、不产生错误推理。两者的技术手段有重叠，但评估方式和优化目标不同。
         </div>
 
-        <h3>14.1 LLM安全挑战概览</h3>
+        <h2 id="sec-14-1">14.1 LLM安全挑战概览</h2>
 
         <p>在深入技术细节前，我们先看看大模型面临哪些具体的安全威胁：</p>
 
@@ -107,7 +118,7 @@
 
         <p>这些安全威胁中，最棘手的问题之一是安全性和有用性之间的<strong>固有矛盾</strong>。一个极度安全的模型往往拒绝回答太多问题，导致用户体验很差。一个非常有用的模型可能对敏感问题也来者不拒。找到二者之间的平衡点，是安全对齐的核心挑战。</p>
 
-        <h3>14.2 LLaMA 2安全对齐策略</h3>
+        <h2 id="sec-14-2">14.2 LLaMA 2安全对齐策略</h2>
 
         <p>LLaMA 2的安全对齐体系由两部分组成：<strong>安全SFT</strong>和<strong>安全奖励模型</strong>，两者并行工作。</p>
 
@@ -121,11 +132,81 @@
             <li><strong>拒绝回答的多样性：</strong> 标注员被要求撰写多种不同表述的拒绝回答，而不是每次都使用相同的套话。这防止了模型学会"固定拒绝模板"后被简单绕过。</li>
         </ul>
 
-        <p>安全SFT数据约占总SFT数据的<strong>15-20%</strong>。Meta发现，如果安全数据占比过高，模型会变得过度防卫——对正常的prompt也会拒绝回答。这个比例的确定经过了大量的消融实验。</p>
+        <p>论文没有给出“安全 SFT 占比”的单一数字，而是在 RLHF 阶段做了安全数据配比的消融实验：固定约 0.9M 有用性样本，把安全数据从 0% 逐步加到 100%（约 0.1M 样本），得到 6 个模型变体。结论是：在有用性数据足够时，加入安全数据并不会显著损害有用性（论文 §4.2、图 14）。这也说明“安全”与“有用”不一定零和——关键在配比与门控机制。</p>
 
         <p><strong>安全奖励模型：</strong></p>
 
         <p>我们在第13章提到，LLaMA 2训练了两个独立的奖励模型——有用性奖励模型和安全奖励模型。安全奖励模型的训练数据侧重于"是否安全"这个维度而非"是否有用"。一个典型的偏好样本是：对于同一个prompt，一个安全的回答（即使很简短）被选为chosen，而一个回答中包含了安全风险（即使信息更丰富）被选为rejected。</p>
+
+        <p>那么两个奖励模型怎么合成一个信号？论文给出了一个<strong>分段门控（piecewise）</strong>的奖励函数（式 4）：当 prompt 被标记为可能不安全、或安全奖励模型的分数本身就低于阈值时，直接用安全分数；否则用有用性分数。</p>
+
+        <div class="math-equation" role="group" aria-label="LLaMA 2 的组合奖励函数">
+            <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="LLaMA 2 的组合奖励函数公式，可横向滚动" style="overflow-x:auto">
+                <math display="block" aria-label="组合奖励 Rc 在 prompt 被标记为不安全或安全奖励 Rs 小于 0.15 时取 Rs，否则取有用性奖励 Rh；最终奖励 R 等于 Rc 减去 beta 乘以与初始策略的 KL 散度">
+                    <mrow>
+                        <msub><mi>R</mi><mi>c</mi></msub><mo>(</mo><mi>g</mi><mo>&#8739;</mo><mi>p</mi><mo>)</mo><mo>=</mo>
+                        <mrow><mo>{</mo><mtable columnalign="left">
+                            <mtr><mtd><msub><mi>R</mi><mi>s</mi></msub><mo>(</mo><mi>g</mi><mo>&#8739;</mo><mi>p</mi><mo>)</mo><mspace width="0.6em"/><mtext>if</mtext><mspace width="0.4em"/><mtext>is_safety</mtext><mo>(</mo><mi>p</mi><mo>)</mo><mtext> or </mtext><msub><mi>R</mi><mi>s</mi></msub><mo>&lt;</mo><mn>0.15</mn></mtd></mtr>
+                            <mtr><mtd><msub><mi>R</mi><mi>h</mi></msub><mo>(</mo><mi>g</mi><mo>&#8739;</mo><mi>p</mi><mo>)</mo><mspace width="0.6em"/><mtext>otherwise</mtext></mtd></mtr>
+                        </mtable><mo>}</mo></mrow>
+                        <mo>,</mo><mspace width="1em"/>
+                        <mi>R</mi><mo>=</mo><msub><mover><mi>R</mi><mo>~</mo></mover><mi>c</mi></msub><mo>&#8722;</mo><mi>&#946;</mi><msub><mi>D</mi><mtext>KL</mtext></msub><mrow><mo>(</mo><msub><mi>&#960;</mi><mi>&#952;</mi></msub><mo>&#8741;</mo><msub><mi>&#960;</mi><mn>0</mn></msub><mo>)</mo></mrow>
+                    </mrow>
+                </math>
+            </div>
+        </div>
+
+        <p>其中 <em>R<sub>s</sub></em> 是安全奖励、<em>R<sub>h</sub></em> 是有用性奖励；阈值 0.15 在 Meta Safety 测试集上对应精确率 0.89、召回率 0.55（论文式 4）。第二项 <em>β·D<sub>KL</sub></em> 是相对初始策略 <em>π<sub>0</sub></em> 的 KL 惩罚，用来防止“奖励黑客”（reward hacking）。</p>
+
+        <figure>
+            <svg viewBox="0 0 720 250" role="img" aria-labelledby="fig-14-1-title fig-14-1-desc" font-family="system-ui, sans-serif">
+                <title id="fig-14-1-title">LLaMA 2 的安全/有用性奖励门控</title>
+                <desc id="fig-14-1-desc">一个 prompt 先经过安全奖励模型 Rs。若 prompt 被标记为不安全，或 Rs 低于 0.15，则输出 Rs 作为优化信号；否则输出有用性奖励 Rh。最后减去与初始策略的 KL 惩罚。</desc>
+                <text x="30" y="26" font-size="15" font-weight="700" fill="#1f2933">两个奖励模型如何合成一个信号</text>
+                <rect x="30" y="80" width="150" height="70" rx="10" fill="#fbe9e1" stroke="#c05621"/>
+                <text x="105" y="108" font-size="12" text-anchor="middle" fill="#7b341e" font-weight="600">安全奖励 Rs</text>
+                <text x="105" y="128" font-size="11" text-anchor="middle" fill="#52606d">先打分</text>
+                <path d="M180 115 h60" stroke="#94a3b8" stroke-width="2" fill="none"/>
+                <path d="M370 115 h80" stroke="#94a3b8" stroke-width="2" fill="none"/>
+                <polygon points="620,80 700,115 620,150" fill="#e3f4ea" stroke="#2f855a"/>
+                <text x="655" y="119" font-size="12" text-anchor="middle" fill="#22543d">减 KL</text>
+                <rect x="240" y="70" width="130" height="90" rx="10" fill="#fef3c7" stroke="#b45309"/>
+                <text x="305" y="98" font-size="12" text-anchor="middle" fill="#92400e" font-weight="600">门控</text>
+                <text x="305" y="118" font-size="11" text-anchor="middle" fill="#52606d">is_safety(p)</text>
+                <text x="305" y="134" font-size="11" text-anchor="middle" fill="#52606d">或 Rs &lt; 0.15 ?</text>
+                <text x="305" y="150" font-size="11" text-anchor="middle" fill="#52606d">是 → 用 Rs</text>
+                <line x1="240" y1="40" x2="105" y2="80" stroke="#2f855a" stroke-width="1.5" stroke-dasharray="4 3" fill="none"/>
+                <text x="120" y="44" font-size="11" fill="#22543d">否 → 用有用性 Rh</text>
+                <text x="30" y="200" font-size="11" fill="#52606d">安全分一旦低于 0.15，无论 prompt 是否被标记，都直接采纳安全分——用“宁可保守”换安全。</text>
+                <text x="30" y="222" font-size="11" fill="#52606d">阈值 0.15 在 Meta Safety 测试集上对应 precision 0.89 / recall 0.55（论文式 4）。</text>
+            </svg>
+            <figcaption><strong>图 14-1.</strong> LLaMA 2 的安全/有用性奖励门控。系统为每个 prompt 维护“是否可能不安全”的标记，并用两个独立奖励模型打分；门控规则（论文式 4）保证只要触到安全红线就改用安全奖励，最后再减去 KL 惩罚防止奖励黑客。这是“安全与有用并不完全零和”的工程实现。</figcaption>
+        </figure>
+
+        <div class="widget" role="group" aria-label="安全奖励门控演示">
+            <label for="rs">滑块——安全奖励分数 Rs：<output id="rs-out">0.30</output></label>
+            <input type="range" id="rs" min="0" max="1" step="0.05" value="0.3">
+            <label><input type="checkbox" id="flagged"> 该 prompt 被标记为可能不安全（is_safety）</label>
+            <div class="readout" id="gate-readout">…</div>
+            <p>按论文式 4：只要 is_safety(p) 为真，或 Rs &lt; 0.15，就用 Rs 作为优化信号；否则用有用性 Rh。阈值 0.15 对应 precision 0.89 / recall 0.55。</p>
+        </div>
+        <script>
+        (function () {
+            var s = document.getElementById('rs'), f = document.getElementById('flagged');
+            var out = document.getElementById('gate-readout');
+            function render() {
+                var rs = Number(s.value), flag = f.checked;
+                document.getElementById('rs-out').textContent = rs.toFixed(2);
+                var useSafety = flag || rs < 0.15;
+                var filtered = rs < 0.15;
+                out.textContent = 'Rs = ' + rs.toFixed(2) + (flag ? '、已标记' : '、未标记') +
+                    ' → 使用' + (useSafety ? '安全奖励 Rs' : '有用性奖励 Rh') +
+                    '；' + (filtered ? '低于 0.15 阈值，会被过滤' : '未触发安全过滤');
+            }
+            s.addEventListener('input', render); f.addEventListener('change', render);
+            render();
+        })();
+        </script>
 
         <pre><code># 安全奖励模型的训练数据示例
 
@@ -148,7 +229,7 @@ rejected: "你可以手动删除注册表中的恶意键值，或者用命令提
             <strong>踩坑实录：</strong> 我们团队在训练安全奖励模型时，发现了一个很头疼的问题——<strong>标注不一致</strong>。同一个prompt，不同的标注员对"是否安全"的判断标准差异很大。比如"如何制作鸡尾酒"——有的标注员认为这是一个正常的烹饪问题，有的则认为"提到酒精就是有潜在风险"。标注不一致导致奖励模型的训练信号噪声很大，模型无法形成稳定的安全判断。解决方案是：在标注前制定详细的安全标注指南，并让标注员通过一致性测试后才能开始标注。标注过程中还设置了"黄金样本"——已知标准的测试样本混入数据中，用于检测标注员的偏离。
         </div>
 
-        <h3>14.3 幻觉的分类与成因</h3>
+        <h2 id="sec-14-3">14.3 幻觉的分类与成因</h2>
 
         <p>幻觉是大模型的"慢性病"——它不像有害内容生成那样明显，但对模型可信度的侵蚀是持久的。LLaMA系列同样深受幻觉困扰。让我们先明确幻觉的分类：</p>
 
@@ -156,7 +237,7 @@ rejected: "你可以手动删除注册表中的恶意键值，或者用命令提
 
         <p><strong>忠实性幻觉（Faithfulness Hallucination）：</strong> 模型回答了与用户问题或上下文不符的内容。比如你告诉模型"我今年30岁"，然后问"你觉得我多大？"模型回答"25岁左右"。这属于"没有忠实于上下文"。</p>
 
-        <p>在LLaMA系列的评估中，事实性幻觉更常见——大约占所有幻觉的70%，忠实性幻觉约占30%。为什么会产生幻觉？核心原因有三个：</p>
+        <p>在LLaMA系列的评估中，事实性幻觉通常更常见（此处 70%/30% 的拆分为<strong>教学示意</strong>，论文未给出该比例）。为什么会产生幻觉？核心原因有三个：</p>
 
         <ul>
             <li><strong>训练数据中的错误信息：</strong> 如果训练数据本身包含错误——比如某个网页上写着"地球是平的"——模型可能会学到这些错误知识。这是最常见的事实性幻觉来源。</li>
@@ -165,20 +246,20 @@ rejected: "你可以手动删除注册表中的恶意键值，或者用命令提
         </ul>
 
         <div class="highlight">
-            <strong>一个经典的LLaMA幻觉案例：</strong> 有人向LLaMA 2-Chat提问："请介绍一下《AI的隐秘角落》这本书的主要内容。"实际上这本书<strong>根本不存在</strong>。但LLaMA 2-Chat给出了一个非常详细的回答："这本书由张伟博士于2022年出版，共320页，分为8个章节，主要讨论了..."整段回答从书名到作者到章节结构全部是编造的。更可怕的是，这段回答的措辞非常自信，完全不像是在"编故事"。这个案例说明了幻觉问题的严重性——用户如果不知道这本书不存在，会完全相信模型的回答。
+            <strong>一个典型的幻觉示例（教学构造）：</strong> 有人向LLaMA 2-Chat提问："请介绍一下《AI的隐秘角落》这本书的主要内容。"实际上这本书<strong>根本不存在</strong>。但LLaMA 2-Chat给出了一个非常详细的回答："这本书由张伟博士于2022年出版，共320页，分为8个章节，主要讨论了..."整段回答从书名到作者到章节结构全部是编造的。更可怕的是，这段回答的措辞非常自信，完全不像是在"编故事"。这个案例说明了幻觉问题的严重性——用户如果不知道这本书不存在，会完全相信模型的回答。
         </div>
 
-        <h3>14.4 LLaMA中的幻觉抑制技术</h3>
+        <h2 id="sec-14-4">14.4 LLaMA中的幻觉抑制技术</h2>
 
         <p>LLaMA系列采用了多种技术来抑制幻觉，效果各有不同：</p>
 
         <p><strong>1. RLHF优化幻觉抑制：</strong></p>
 
-        <p>LLaMA 2在RLHF训练中，将"是否包含错误信息"作为一个单独的评分维度（与有用性、安全性并列）。标注员在比较两个回答时，会标注"哪个回答更准确"。这使得奖励模型学会了惩罚包含幻觉的回答。实验表明，这个措施让LLaMA 2-Chat在TruthfulQA基准上的准确率从SFT版本的约35%提升到了RLHF版本的约55%。</p>
+        <p>LLaMA 2在RLHF训练中，将"是否包含错误信息"作为一个单独的评分维度（与有用性、安全性并列）。标注员在比较两个回答时，会标注"哪个回答更准确"。这使得奖励模型学会了惩罚包含幻觉的回答。论文表11 报告的是预训练基座在 TruthfulQA 上的“既真实又有信息量”百分比：LLaMA 2 分别为 7B 33.29、13B 41.86、70B 50.18（LLaMA 1 65B 为 48.71）。注意这是基座模型的自动指标，与 Chat 版本的人工评估口径不同，不能直接跟前几章的对话评估混用。</p>
 
-        <p><strong>2. Knowledge-aware训练：</strong></p>
+        <p><strong>2. “知识感知”训练（教学示意）：</strong></p>
 
-        <p>LLaMA 3引入了一种"知识感知"的训练策略。核心想法是：在训练过程中，模型不仅学习预测下一个token，还要<strong>判断自己对当前话题的知识掌握程度</strong>。具体做法是：在训练数据中插入"知识感知标记"——如果模型能准确预测当前内容，标记为"已知"；如果遇到它不可能知道的信息（如未来的事件），标记为"未知"。通过这种方式，模型学会了区分"我知道"和"我不知道"的边界。</p>
+        <p>下面描述的一种直觉性做法——让模型学会区分“我知道”与“我不知道”——属于<strong>教学示意</strong>，并非 LLaMA 3 论文给出的确切算法；此处用简化伪代码说明思路，切勿当作论文原文。</p>
 
         <pre><code># Knowledge-aware训练的示意代码（简化版）
 
@@ -217,7 +298,7 @@ def sample_with_knowledge_awareness(logits, knowledge_threshold=0.8):
         # 正常采样
         return sample_from_logits(logits)</code></pre>
 
-        <p>这个技术的效果是：LLaMA 3在TruthfulQA上的准确率提升到了约65%（LLaMA 2是55%），同时模型在不确定时的"我不知道"回答频率增加了约3倍。</p>
+        <p>这个技术的思路是：在不确定时让模型更愿意说“我不知道”，从而减少高置信度的编造。具体效果依实现和评测口径而异，此处不给出未经出处的具体百分比。</p>
 
         <p><strong>3. 解码时干预：</strong></p>
 
@@ -227,7 +308,7 @@ def sample_with_knowledge_awareness(logits, knowledge_threshold=0.8):
             <strong>实用技巧：</strong> 如果你在自己部署LLaMA时希望减轻幻觉，一个不需要重新训练的技巧是<strong>调整采样参数</strong>。降低temperature（从默认的0.7降到0.3-0.5）可以让模型更"保守"——它更倾向于选择概率最高的token，减少为了"创造性"而编造内容的情况。同时，增加top_p的阈值（比如从0.9降到0.7）也能起到类似效果。当然，这些调整会降低回答的多样性，需要根据你的具体场景来权衡。
         </div>
 
-        <h3>14.5 安全评估体系</h3>
+        <h2 id="sec-14-5">14.5 安全评估体系</h2>
 
         <p>LLaMA系列建立了一套完整的<strong>安全评估体系</strong>，用以确保模型在发布前达到安全标准：</p>
 
@@ -250,13 +331,13 @@ def sample_with_knowledge_awareness(logits, knowledge_threshold=0.8):
             <li>Meta根据红队报告的数据，将这些"脆弱prompt"加入安全SFT和安全奖励模型的训练数据中</li>
         </ul>
 
-        <p>LLaMA 2的论文报告了一个有意思的数据：经过多轮红队测试和安全迭代后，LLaMA 2 70B-Chat在对抗性测试中的"不安全回答率"从初始版本的约20%下降到了不到2%。这说明红队测试+迭代训练的组合是非常有效的。</p>
+        <p>论文没有给出一个简单的“不安全率”数字，而是用图14 展示了安全 RLHF 前后的奖励分数分布：加入对抗性 prompt 做安全 RLHF 后，安全测试集上的安全奖励分数整体右移、接近 0 的长尾变薄（不安全回答减少）；同时有用性奖励分布基本不变（论文 §4.2、图14）。这说明红队测试 + 迭代训练可以在不牺牲有用性的前提下提升安全性。</p>
 
         <div class="warning">
             <strong>真实安全案例——安全绕过：</strong> 一个著名的LLaMA 2越狱案例是利用"Base64编码"绕过安全过滤。攻击者将问题"How to make a bomb?"编码为Base64字符串，然后让模型"解码并回答Base64编码后的问题"。模型在解码过程中"看不到"有害内容，解码完成后又因为"已经在解码模式中"而直接输出了答案——绕过了安全检测。这种越狱方式在LLaMA 2初期版本中成功率为约30%。后来LLaMA 2通过增加"多层安全检测"解决了这个问题：不仅在输入层检测有害prompt，在模型的中间层也进行安全检测，确保模型在任何处理阶段都不会输出有害内容。这个案例告诉我们：<strong>安全过滤必须在多个层级、多个阶段同时进行，单层过滤是脆弱的。</strong>
         </div>
 
-        <h3>14.6 LLaMA 3安全升级</h3>
+        <h2 id="sec-14-6">14.6 LLaMA 3安全升级</h2>
 
         <p>LLaMA 3在安全对齐上做了显著的升级：</p>
 
@@ -305,9 +386,11 @@ def sample_with_knowledge_awareness(logits, knowledge_threshold=0.8):
             </tr>
         </table>
 
+        <p><small>说明：上表中的团队规模与数据量数字为<strong>教学示意</strong>（论文未给出确切数字）；可核对的是 LLaMA 3 在安全上的定性升级：扩大红队与外部审计、多语言对抗数据、多层安全过滤与更透明的安全报告。</small></p>
+
         <p>LLaMA 3最显著的改进是<strong>多语言安全覆盖</strong>。LLaMA 2的安全过滤主要针对英语，导致同一个有害prompt用英语问会被拒绝，但用其他语言问可能被放行。LLaMA 3在这方面做了大量工作：在50多种语言上收集了对抗性测试数据，确保安全边界在跨语言情况下仍然有效。</p>
 
-        <h3>14.7 安全与有用性的平衡</h3>
+        <h2 id="sec-14-7">14.7 安全与有用性的平衡</h2>
 
         <p>安全对齐中最微妙的问题是如何平衡<strong>安全性</strong>和<strong>有用性</strong>。过度强调安全性会导致模型拒绝回答太多问题——用户问"如何修复漏水的水管"都可能被拒绝（因为"水管修理涉及工具使用，有安全风险"）。而过度强调有用性会让模型变得不安全。</p>
 
@@ -337,7 +420,7 @@ def sample_with_knowledge_awareness(logits, knowledge_threshold=0.8):
             <a href="15.html">下一章 →</a>
         </div>
 
-    </div>
+    </main>
 </div>
 </div>
 </body>
