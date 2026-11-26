@@ -9,7 +9,7 @@
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>🦙 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 LLaMA系列概述</a></li>
@@ -42,17 +42,28 @@
             <li><a href="28.html">第28章 开源LLM生态与未来趋势</a></li>
         </ul>
     </div>
-    <div class="main-content">
+    <main class="main-content" id="content">
 
-        <h2>第18章 评估体系与基准测试</h2>
+        <h1>第18章 评估体系与基准测试</h1>
+
+        <nav class="toc" aria-label="本章小节导航">
+            <strong>本章导航：</strong>
+            <a href="#sec-18-1">18.1 评估分类</a> ·
+            <a href="#sec-18-2">18.2 MMLU</a> ·
+            <a href="#sec-18-3">18.3 代表性基准</a> ·
+            <a href="#sec-18-4">18.4 开源评估框架</a> ·
+            <a href="#sec-18-5">18.5 人工与自动评估</a> ·
+            <a href="#sec-18-6">18.6 常见陷阱</a> ·
+            <a href="#sec-18-7">18.7 LLaMA 评估方法论</a>
+        </nav>
 
         <p>我们在前面的17章里花了很多时间讨论LLaMA"怎么做"——架构设计、训练方法、量化技巧、并行策略。但有一个更根本的问题一直没来得及回答：<strong>LLaMA到底有多好？</strong>这个问题看似简单，实际却异常复杂。因为"好"不是一个单维度的概念——在医疗问答上表现好的模型，可能在代码生成上一塌糊涂；在英语任务上得高分的模型，可能在中文理解上不忍直视。</p>
 
         <p>更棘手的是，LLM的评估本身就是一个还未被完全解决的开放问题。MMLU考了80分的模型真的比考了78分的更好吗？如果模型在GSM8K上得高分但"作弊"了（因为训练数据里包含了测试题的变体），这个分数还代表能力吗？如果一个模型通过了律师资格考试但告诉用户"将律师加入汤中"，它算聪明还是愚蠢？</p>
 
-        <p>这一章我们会系统梳理LLaMA的评估体系：从标准基准测试的设计原理，到LLaMA各代在这些测试上的表现对比，再到评估中常见的陷阱和教训。读完这一章，你不仅知道LLaMA"有多好"，更知道如何独立判断一个模型的好坏。</p>
+        <p>这一章我们会系统梳理LLaMA的评估体系：从标准基准测试的设计原理，到LLaMA各代在这些测试上的表现对比，再到评估中常见的陷阱和教训。读完这一章，你不仅知道LLaMA“有多好”，更知道如何独立判断一个模型的好坏。本章数字均取自三篇原论文：<a href="https://arxiv.org/abs/2302.13971">LLaMA 1</a>、<a href="https://arxiv.org/abs/2307.09288">LLaMA 2</a>、<a href="https://arxiv.org/abs/2407.21783">LLaMA 3</a>。</p>
 
-        <h3>18.1 LLM评估分类</h3>
+        <h2 id="sec-18-1">18.1 LLM评估分类</h2>
 
         <p>LLM的能力不是单一的。学术界和工业界一般将LLM的评估分为以下几大类：</p>
 
@@ -103,7 +114,7 @@
 
         <p>这些维度之间并不是独立的。数学推理能力的提升往往会带动代码生成能力的提升（因为两者都需要结构化思维），而知识理解的增强也会改善语言推理。但反过来，代码能力强不一定意味着安全性好——事实上，一个代码能力强但没有经过安全对齐的模型，可能比代码能力弱但安全对齐好的模型更危险。</p>
 
-        <h3>18.2 MMLU：知识的"高考"</h3>
+        <h2 id="sec-18-2">18.2 MMLU：知识的"高考"</h2>
 
         <p>MMLU（Massive Multitask Language Understanding）是目前最广泛使用的LLM评估基准之一。它包含57个学科领域的约14000道选择题，涵盖了从高中物理到国际法、从临床知识到计算机科学等方方面面。MMLU被称为"LLM的高考"——它考察的是模型的<strong>知识广度和理解深度</strong>。</p>
 
@@ -113,94 +124,64 @@
 
         <table>
             <tr>
-                <th>模型</th>
+                <th>模型（论文来源）</th>
                 <th>参数量</th>
                 <th>MMLU (5-shot)</th>
-                <th>GSM8K (8-shot)</th>
+                <th>GSM8K</th>
                 <th>HumanEval (pass@1)</th>
-                <th>MATH (4-shot)</th>
+                <th>MATH</th>
             </tr>
-            <tr>
-                <td>LLaMA 1</td>
-                <td>7B</td>
-                <td>38.8%</td>
-                <td>12.6%</td>
-                <td>13.4%</td>
-                <td>6.2%</td>
-            </tr>
-            <tr>
-                <td>LLaMA 1</td>
-                <td>13B</td>
-                <td>46.9%</td>
-                <td>22.3%</td>
-                <td>21.8%</td>
-                <td>8.5%</td>
-            </tr>
-            <tr>
-                <td>LLaMA 1</td>
-                <td>65B</td>
-                <td>63.4%</td>
-                <td>51.7%</td>
-                <td>37.2%</td>
-                <td>16.8%</td>
-            </tr>
-            <tr>
-                <td>LLaMA 2</td>
-                <td>7B</td>
-                <td>45.3%</td>
-                <td>16.8%</td>
-                <td>18.9%</td>
-                <td>7.8%</td>
-            </tr>
-            <tr>
-                <td>LLaMA 2</td>
-                <td>13B</td>
-                <td>54.8%</td>
-                <td>34.5%</td>
-                <td>26.7%</td>
-                <td>10.2%</td>
-            </tr>
-            <tr>
-                <td>LLaMA 2</td>
-                <td>70B</td>
-                <td>68.9%</td>
-                <td>63.8%</td>
-                <td>48.6%</td>
-                <td>21.3%</td>
-            </tr>
-            <tr>
-                <td>LLaMA 3</td>
-                <td>8B</td>
-                <td>66.7%</td>
-                <td>51.6%</td>
-                <td>44.1%</td>
-                <td>23.5%</td>
-            </tr>
-            <tr>
-                <td>LLaMA 3</td>
-                <td>70B</td>
-                <td>82.0%</td>
-                <td>86.5%</td>
-                <td>72.8%</td>
-                <td>49.3%</td>
-            </tr>
-            <tr>
-                <td>LLaMA 3</td>
-                <td>405B</td>
-                <td>87.8%</td>
-                <td>93.6%</td>
-                <td>82.6%</td>
-                <td>58.9%</td>
-            </tr>
+            <tr><td>LLaMA 1（表7/8/9）</td><td>7B</td><td>35.1%</td><td>11.0%<sup>†</sup></td><td>10.5%</td><td>2.9%<sup>†</sup></td></tr>
+            <tr><td>LLaMA 1</td><td>13B</td><td>46.9%</td><td>17.8%<sup>†</sup></td><td>15.8%</td><td>3.9%<sup>†</sup></td></tr>
+            <tr><td>LLaMA 1</td><td>65B</td><td>63.4%</td><td>50.9%<sup>†</sup></td><td>23.7%</td><td>10.6%<sup>†</sup></td></tr>
+            <tr><td>LLaMA 2（表3/4）</td><td>7B</td><td>45.3%</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><td>LLaMA 2</td><td>13B</td><td>54.8%</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><td>LLaMA 2</td><td>70B</td><td>68.9%</td><td>56.8%</td><td>29.9%</td><td>—</td></tr>
+            <tr><td>LLaMA 3（主表）</td><td>8B</td><td>69.4%</td><td>84.5%</td><td>72.6%</td><td>51.9%</td></tr>
+            <tr><td>LLaMA 3</td><td>70B</td><td>83.6%</td><td>95.1%</td><td>80.5%</td><td>68.0%</td></tr>
+            <tr><td>LLaMA 3</td><td>405B</td><td>87.3%</td><td>96.8%</td><td>89.0%</td><td>73.8%</td></tr>
         </table>
 
-        <p>这张表信息量巨大。首先，<strong>缩放效应非常明显</strong>：从7B到405B，MMLU分数从38.8%跃升到87.8%，提升了近50个百分点。其次，<strong>代际进步一样显著</strong>：LLaMA 3 8B（66.7%）已经超过了LLaMA 1 65B（63.4%）——一个只有其1/8的模型，因为更好的训练数据和架构改进，就能击败大得多的前代模型。最后，<strong>不同能力的缩放速度不同</strong>：GSM8K（数学推理）从7B到405B提升了7.4倍，而MMLU（知识）只提升了2.3倍——这说明推理能力比知识记忆更需要大模型的支持。</p>
+        <p><small>† LLaMA 1 的 GSM8K / MATH 为论文表7 的 maj1@k 指标（GSM8K k=100、MATH k=256），与 LLaMA 3 的 8-shot / 0-shot CoT 并非同一口径；LLaMA 2 论文主表未给出各规模的 GSM8K / HumanEval，故记“—”。各代设置（shot 数、是否 CoT）不同，这正是 18.6 讨论的“评估标准不统一”问题。数字均取自三篇论文原表：LLaMA 1（arXiv:2302.13971）表7/8/9、LLaMA 2（arXiv:2307.09288）表3/4、LLaMA 3（arXiv:2407.21783）主结果表。</small></p>
+
+        <p>这张表信息量巨大。首先，<strong>缩放效应明显</strong>：同为 LLaMA 3，8B → 405B 的 MMLU 从 69.4% 升到 87.3%（+17.9 点），GSM8K 从 84.5% 升到 96.8%（+12.3 点）。其次，<strong>代际进步同样显著</strong>：LLaMA 3 8B（MMLU 69.4%）已超过 LLaMA 2 70B（68.9%）与 LLaMA 1 65B（63.4%）——一个只有约 1/9 参数量的模型靠更好的数据与架构实现了反超。最后，注意表中不同代际的评测口径并不一致（LLaMA 1 的 GSM8K 是 maj1@k，LLaMA 3 是 8-shot CoT）：<strong>跨代数字只能看趋势，不能当作精确的能力比较</strong>。</p>
 
         <div class="tip">
-            <strong>观察：</strong> LLaMA 3 8B在GSM8K上的分数（51.6%）几乎是LLaMA 2 70B（63.8%）的量级，但模型小了近9倍。这意味着如果你只需要数学推理能力，完全可以用8B模型量化后部署到边缘设备上，而不需要70B这样的大模型。这再次印证了第7章缩放定律中讲到的"模型容量与任务复杂度"的关系。
+            <strong>观察：</strong> LLaMA 3 8B 的 MMLU（69.4%）已与 LLaMA 2 70B（68.9%）基本持平，参数量却只有约 1/9。这意味着很多任务上用 8B 模型量化后部署到边缘设备就够用了，而不必堆到 70B。这再次印证了第7章缩放定律中讲到的“模型容量与任务复杂度”的关系。
         </div>
 
-        <h3>18.3 各维度的代表性基准</h3>
+        <figure>
+            <svg viewBox="0 0 720 300" role="img" aria-labelledby="fig-18-1-title fig-18-1-desc" font-family="system-ui, sans-serif">
+                <title id="fig-18-1-title">LLaMA 1/2/3 的 MMLU 5-shot 随参数量的变化</title>
+                <desc id="fig-18-1-desc">横轴为参数量（对数刻度），纵轴为 MMLU 5-shot 准确率。LLaMA 1 从 7B 的 35.1% 升到 65B 的 63.4%；LLaMA 2 从 7B 的 45.3% 升到 70B 的 68.9%；LLaMA 3 从 8B 的 69.4% 升到 405B 的 87.3%。代际曲线整体上移，说明同等参数下越新的模型 MMLU 越高。</desc>
+                <text x="30" y="26" font-size="15" font-weight="700" fill="#1f2933">同参数量下，MMLU 一代比一代高</text>
+                <g stroke="#e2e8f0"><line x1="30" y1="50" x2="670" y2="50"/><line x1="30" y1="117" x2="670" y2="117"/><line x1="30" y1="183" x2="670" y2="183"/></g>
+                <line x1="30" y1="250" x2="670" y2="250" stroke="#94a3b8"/><line x1="30" y1="50" x2="30" y2="250" stroke="#94a3b8"/>
+                <g font-size="11" fill="#64748b" text-anchor="end">
+                    <text x="26" y="54">90</text><text x="26" y="121">70</text><text x="26" y="187">50</text><text x="26" y="254">30</text>
+                </g>
+                <polyline points="45,233 137,194 375,139" fill="none" stroke="#3e7cb1" stroke-width="2.5"/>
+                <polyline points="45,199 137,167 386,120" fill="none" stroke="#b45309" stroke-width="2.5"/>
+                <polyline points="65,119 386,71 645,59" fill="none" stroke="#2f855a" stroke-width="2.5"/>
+                <g>
+                    <circle cx="45" cy="233" r="4" fill="#3e7cb1"/><circle cx="137" cy="194" r="4" fill="#3e7cb1"/><circle cx="375" cy="139" r="4" fill="#3e7cb1"/>
+                    <circle cx="45" cy="199" r="4" fill="#b45309"/><circle cx="137" cy="167" r="4" fill="#b45309"/><circle cx="386" cy="120" r="4" fill="#b45309"/>
+                    <circle cx="65" cy="119" r="4" fill="#2f855a"/><circle cx="386" cy="71" r="4" fill="#2f855a"/><circle cx="645" cy="59" r="4" fill="#2f855a"/>
+                </g>
+                <g font-size="11" fill="#334155" text-anchor="middle">
+                    <text x="45" y="268">7B</text><text x="137" y="268">13B</text><text x="386" y="268">70B</text><text x="645" y="268">405B</text>
+                </g>
+                <text x="350" y="288" font-size="11" fill="#64748b" text-anchor="middle">参数量（对数刻度）</text>
+                <g font-size="11">
+                    <rect x="470" y="40" width="12" height="12" fill="#3e7cb1"/><text x="488" y="50" fill="#334155">LLaMA 1</text>
+                    <rect x="560" y="40" width="12" height="12" fill="#b45309"/><text x="578" y="50" fill="#334155">LLaMA 2</text>
+                    <rect x="470" y="60" width="12" height="12" fill="#2f855a"/><text x="488" y="70" fill="#334155">LLaMA 3</text>
+                </g>
+            </svg>
+            <figcaption><strong>图 18-1.</strong> MMLU 5-shot 随参数量的变化（横轴对数刻度）。数据取自三篇论文原表：LLaMA 1 表9、LLaMA 2 表3、LLaMA 3 主结果表。三代的曲线整体上移——例如 65–70B 区间，LLaMA 1 为 63.4%、LLaMA 2 为 68.9%、LLaMA 3 为 83.6%，说明“更好的数据 + 架构”能在相同参数量下换来显著的提升。</figcaption>
+        </figure>
+
+        <h2 id="sec-18-3">18.3 各维度的代表性基准</h2>
 
         <p>除了MMLU，LLM评估中还有几个必须了解的核心基准。</p>
 
@@ -208,19 +189,61 @@
 
         <p>GSM8K包含8500道小学数学应用题，难度大约是小学五六年级水平。但它对LLM来说并不简单——因为这些题目要求多步推理（通常需要3-8步），并且大部分题目都有一个"干扰数字"（distractor number），需要模型判断哪些信息是必要的。GSM8K使用chain-of-thought（CoT）prompting来评估，模型需要输出完整的推理过程后再给出最终答案。</p>
 
-        <p>MATH则更难——它包含5000道高中数学和竞赛级别的题目，来自AMC、AIME、美国数学竞赛等。MATH考察的不只是计算能力，还有数学概念的理解和创造性解题策略。LLaMA 3 405B在MATH上达到了58.9%，这已经是一个相当高的水平——意味着它能在超过一半的高中数学竞赛题上给出正确答案。</p>
+        <p>MATH则更难——它包含5000道高中数学和竞赛级别的题目，来自AMC、AIME、美国数学竞赛等。MATH考察的不只是计算能力，还有数学概念的理解和创造性解题策略。LLaMA 3 405B在MATH上达到了73.8%（论文主表，0-shot CoT），这已经是一个相当高的水平——意味着它能在近四分之三的高中数学竞赛题上给出正确答案。</p>
 
         <h4>HumanEval：代码能力的标尺</h4>
 
         <p>HumanEval是OpenAI发布的代码生成测试集，包含164道手写的编程题，每道题有完整的函数签名、docstring和测试用例。评估标准是pass@k——模型生成k个代码样本，只要有一个能通过所有测试用例就算成功。</p>
 
-        <p>LLaMA 3 405B在HumanEval pass@1上达到82.6%，这是一个令人印象深刻的数字。它意味着在单次采样中，模型就有82.6%的概率生成一个完全正确的函数实现。相比LLaMA 1 65B的37.2%，这是一个质的飞跃。这里的改进不仅来自模型变大，更来自LLaMA 3训练数据中代码占比的大幅提升（约25%）。</p>
+        <p>LLaMA 3 405B在HumanEval pass@1上达到89.0%（论文主表，0-shot），这是一个令人印象深刻的数字。它意味着在单次采样中，模型就有89.0%的概率生成一个完全正确的函数实现。相比LLaMA 1 65B的23.7%，这是一个质的飞跃。这里的改进不仅来自模型变大，更来自LLaMA 3训练数据中代码占比的大幅提升（约25%）。</p>
+
+        <p>pass@k 的定义来自 Chen 等（2021），常用无偏估计器从 <em>n</em> 个采样中估计“至少 1 个正确”的概率：</p>
+
+        <div class="math-equation" role="group" aria-label="pass@k 估计器">
+            <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="pass@k 无偏估计器公式，可横向滚动" style="overflow-x:auto">
+                <math display="block" aria-label="pass@k 等于 1 减去组合数 C(n 减 c, k) 除以 C(n, k)，其中 n 是采样总数、c 是正确的样本数、k 是抽取数量">
+                    <mrow>
+                        <mtext>pass@k</mtext><mo>=</mo><mn>1</mn><mo>&#8722;</mo>
+                        <mfrac>
+                            <mrow><mi>C</mi><mo>(</mo><mi>n</mi><mo>&#8722;</mo><mi>c</mi><mo>,</mo><mi>k</mi><mo>)</mo></mrow>
+                            <mrow><mi>C</mi><mo>(</mo><mi>n</mi><mo>,</mo><mi>k</mi><mo>)</mo></mrow>
+                        </mfrac>
+                    </mrow>
+                </math>
+            </div>
+        </div>
+
+        <p>其中 <em>n</em> 是采样总数、<em>c</em> 是其中正确的样本数、<em>k</em> 是抽取数量。直觉：分母是“从 n 个里抽 k 个”的全部组合，分子是“全抽到错的”的组合，两者之比就是“一个都没对”的概率。</p>
+
+        <div class="widget" role="group" aria-label="pass@k 估算器">
+            <label for="pk-p">滑块一——单次采样正确率 p：<output id="pk-p-out">0.30</output></label>
+            <input type="range" id="pk-p" min="0.05" max="0.95" step="0.05" value="0.3">
+            <label for="pk-k">滑块二——采样次数 k：<output id="pk-k-out">10</output></label>
+            <input type="range" id="pk-k" min="1" max="100" step="1" value="10">
+            <div class="readout" id="pk-readout">…</div>
+            <p>教学简化：把每次采样视为独立、以概率 p 命中，则 pass@k = 1 − (1 − p)<sup>k</sup>。真实的 pass@k 用上式的无偏估计器从 n 个样本中估计，此处仅用独立模型直观展示“多采样”的收益与边际递减。</p>
+        </div>
+        <script>
+        (function () {
+            var sp = document.getElementById('pk-p'), sk = document.getElementById('pk-k');
+            var out = document.getElementById('pk-readout');
+            function render() {
+                var p = Number(sp.value), k = Number(sk.value);
+                document.getElementById('pk-p-out').textContent = p.toFixed(2);
+                document.getElementById('pk-k-out').textContent = String(k);
+                var pass = 1 - Math.pow(1 - p, k);
+                out.textContent = 'p = ' + p.toFixed(2) + '，k = ' + k + ' → pass@k ≈ ' + (pass * 100).toFixed(1) + '%';
+            }
+            sp.addEventListener('input', render); sk.addEventListener('input', render);
+            render();
+        })();
+        </script>
 
         <div class="highlight">
             <strong>一个值得注意的细节：</strong> HumanEval的题目相对简单（主要是算法基础题），而且大部分题目在GitHub上有类似的实现。这意味着模型可能在训练数据中"见过"类似的代码——这就是基准污染问题。为了解决这个问题，研究者们推出了HumanEval+（增加更严格的测试用例）、EvalPlus等增强版本。在LLaMA 3的评估中，Meta同时报告了在原始HumanEval和增强版本上的分数。
         </div>
 
-        <h3>18.4 开源评估框架</h3>
+        <h2 id="sec-18-4">18.4 开源评估框架</h2>
 
         <p>自己写评估代码非常繁琐——你需要加载模型、格式化prompt、设置few-shot样例、解析模型的输出、计算统计指标。幸运的是，社区已经开发出了成熟的评估框架。</p>
 
@@ -242,12 +265,12 @@ lm_eval --model hf \
 # 输出示例:
 # |  Task   |Version| Metric |Value |   |Stderr|
 # |---------|------:|--------|-----:|---|-----:|
-# | mmlu    |      1|acc     | 0.667|   | 0.012|
-# | gsm8k   |      3|acc     | 0.516|   | 0.014|</code></pre>
+# | mmlu    |      1|acc     | 0.694|   | 0.012|
+# | gsm8k   |      3|acc     | 0.845|   | 0.014|</code></pre>
 
         <p>在使用这些框架时有一个非常重要的细节：<strong>评估设置必须完全匹配</strong>。不同的few-shot数量、不同的prompt模板、不同的生成参数（温度、top-p）都会导致分数差异。所以当你看到一篇论文报告了某个分数时，必须确认它使用的评估框架和设置是否和你的一致。</p>
 
-        <h3>18.5 人工评估与自动评估</h3>
+        <h2 id="sec-18-5">18.5 人工评估与自动评估</h2>
 
         <p>自动评估（如MMLU、GSM8K）有明确的正确/错误标准，客观且可复现。但它有一个根本缺陷：<strong>自动评估无法衡量"对话质量"</strong>。一个模型可能在MMLU上得90分，但在真实对话中表现得像机器人一样生硬。</p>
 
@@ -266,7 +289,7 @@ lm_eval --model hf \
             <strong>踩坑故事：</strong> 我参与过一个项目，试图用GPT-4自动评估来替代人工评估。具体做法是让GPT-4给两个模型的输出打分，然后取偏好。初期结果看起来不错——GPT-4的评分和人类评分的一致性达到了80%左右。但深入分析后发现，GPT-4在"风格"评分上严重偏向"更长、更啰嗦"的回答。后来我们发现，GPT-4对自身产生的回答风格有系统性的偏好（self-enhancement bias）。这个教训是：<strong>自动评估可以节省成本，但不能完全替代人工评估——尤其是在衡量"有用性"和"自然度"这类主观维度时。</strong>
         </div>
 
-        <h3>18.6 评估中的常见陷阱</h3>
+        <h2 id="sec-18-6">18.6 评估中的常见陷阱</h2>
 
         <p>LLM评估中充满了各种"看起来很高但实际上没用"的陷阱。了解这些陷阱，比记住几个分数数字重要得多。</p>
 
@@ -297,7 +320,7 @@ lm_eval --model hf \
             <strong>评估的黄金法则：</strong> 不要只看单一指标的平均分。要看（1）各个子领域的分数分布；（2）错误的类型分析（是知识缺失、逻辑错误、还是格式问题）；（3）在你的目标场景上的实际表现。一个分数只能告诉你"这个模型在某个测试上的表现"，不能告诉你"这个模型在你的场景中好不好用"。
         </div>
 
-        <h3>18.7 LLaMA评估方法论</h3>
+        <h2 id="sec-18-7">18.7 LLaMA评估方法论</h2>
 
         <p>最后，来看Meta在LLaMA论文中使用的评估方法论。了解这些细节对你阅读论文和复现结果至关重要。</p>
 
@@ -325,7 +348,7 @@ lm_eval --model hf \
             <a href="19.html">下一章 →</a>
         </div>
 
-    </div>
+    </main>
 </div>
 </div>
 </body>
