@@ -9,7 +9,7 @@
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>🦙 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 LLaMA系列概述</a></li>
@@ -42,19 +42,29 @@
             <li><a href="28.html">第28章 开源LLM生态与未来趋势</a></li>
         </ul>
     </div>
-    <div class="main-content">
+    <main class="main-content" id="content">
 
-        <h2>第9章 预训练数据工程</h2>
+        <h1>第9章 预训练数据工程</h1>
+
+        <nav class="toc" aria-label="本章小节导航">
+            <strong>本章导航：</strong>
+            <a href="#sec-9-1">9.1 数据来源全景</a> ·
+            <a href="#sec-9-2">9.2 数据清洗流水线</a> ·
+            <a href="#sec-9-3">9.3 LLaMA 2 的数据改进</a> ·
+            <a href="#sec-9-4">9.4 LLaMA 3 的数据革命</a> ·
+            <a href="#sec-9-5">9.5 质量 vs 数量</a> ·
+            <a href="#sec-9-6">9.6 两种去重粒度</a>
+        </nav>
 
         <p>熟悉机器学习的朋友都知道一句老话：数据和特征决定了机器学习的上限，模型和算法只是逼近这个上限。在大模型时代，这句话的分量被放大了千百倍。LLaMA 1用1T tokens就训练出了超越GPT-3 175B的模型——这个反直觉的结果证明了一个道理：<strong>高质量的数据在量级上的"劣势"，可以通过精心的数据工程逆转。</strong></p>
 
-        <p>这一章我们来拆解LLaMA预训练数据工程的完整体系。从数据来源到清洗流水线，从配比策略到质量评估，每一环都深刻影响最终模型的能力边界。相信我，读完之后，你再也不会觉得"大模型训练就是堆GPU"了。</p>
+        <p>这一章我们来拆解LLaMA预训练数据工程的完整体系。从数据来源到清洗流水线,从配比策略到质量评估,每一环都深刻影响最终模型的能力边界。相信我，读完之后，你再也不会觉得“大模型训练就是堆GPU”了。本章数据均来自 <a href="https://arxiv.org/abs/2302.13971"><em>LLaMA: Open and Efficient Foundation Language Models</em></a>（Touvron 等，arXiv:2302.13971）与 LLaMA 2（arXiv:2307.09288）、LLaMA 3（arXiv:2407.21783）。</p>
 
         <div class="highlight">
             <strong>本章的核心论点：</strong> 数据工程不是"洗数据"那么简单——它是大模型训练中投入产出比最高的环节。Meta在LLaMA 1论文中明确写道："一个精心筛选和配比的数据集，比简单的数据量堆砌能带来更多的模型能力提升。"这也是为什么LLaMA 1的13B模型能超越GPT-3 175B的底层原因之一。
         </div>
 
-        <h3>9.1 LLaMA 1的数据来源全景</h3>
+        <h2 id="sec-9-1">9.1 LLaMA 1的数据来源全景</h2>
 
         <p>LLaMA 1的训练数据来自7个不同的来源，总计约1.4T tokens（去重后约1.0T）。每个来源都有其独特的价值和角色。来看这张完整的构成表：</p>
 
@@ -98,36 +108,82 @@
                 <td>GitHub</td>
                 <td>4.5%</td>
                 <td>~63B</td>
-                <td>1.17</td>
+                <td>0.64</td>
                 <td>代码能力、逻辑推理</td>
             </tr>
             <tr>
                 <td>arXiv</td>
                 <td>2.5%</td>
                 <td>~35B</td>
-                <td>2.24</td>
+                <td>1.06</td>
                 <td>科学知识、数学推理</td>
             </tr>
             <tr>
                 <td>StackExchange</td>
                 <td>2.0%</td>
                 <td>~28B</td>
-                <td>2.10</td>
+                <td>1.03</td>
                 <td>问答能力、技术讨论</td>
             </tr>
         </table>
 
-        <p>这张表最有意思的是"采样次数"这一列。它表示每个数据源中的内容在训练中被重复使用的平均次数。Wikipedia、Books和arXiv的采样次数约为2.2-2.5——也就是说这些高质量来源的数据被"多看了两遍多"。而CommonCrawl和C4的采样次数接近1——基本只看一遍就不重复了。</p>
+        <p><small>占比与“采样次数（Epochs）”列取自 LLaMA 1 论文表 1；token 数量为按 1.4T 总量乘以占比的教学估算值（论文只给出磁盘体积，未给出各源 token 数），仅用于理解量级。</small></p>
+
+        <p>这张表最有意思的是“采样次数”这一列。它表示训练 1.4T tokens 时，每个数据源被遍历的平均轮数（论文表1）。Wikipedia（2.45）和 Books（2.23）被“多看了两遍多”，而 CommonCrawl（1.10）、C4（1.06）、arXiv（1.06）、StackExchange（1.03）基本只看一遍——注意 <strong>GitHub 只有 0.64</strong>，意味着代码子集甚至连一遍都没走完就训练结束了。</p>
 
         <p>这种<strong>数据重采样策略</strong>是LLaMA数据工程的一个关键设计。高质量的数据（如Wikipedia、书籍）虽然量少但信息密度高，值得反复学习。低质量的数据（如CommonCrawl）量很大但噪声多，看一遍就够了。这个直觉后来被Chinchilla论文的形式化分析所证实：在固定算力预算下，对高质量数据进行上采样（upsampling）比使用更多低质量数据更有效。</p>
+
+        <figure>
+            <svg viewBox="0 0 720 310" role="img" aria-labelledby="fig-9-1-title fig-9-1-desc" font-family="system-ui, sans-serif">
+                <title id="fig-9-1-title">LLaMA 1 预训练数据的七类来源占比与采样次数</title>
+                <desc id="fig-9-1-desc">横条长度表示各数据源在 1.4T tokens 中的采样占比，右侧文字给出训练时该子集被遍历的轮数。CommonCrawl 占 67%、采样 1.10 轮；Wikipedia 占 4.5% 但被遍历 2.45 轮；GitHub 占 4.5% 但只遍历 0.64 轮。</desc>
+                <text x="30" y="26" font-size="15" font-weight="700" fill="#1f2933">数据占比 ≠ 看到多少：高质量源被“多刷几遍”</text>
+                <g font-size="12">
+                    <text x="30" y="69" fill="#334155">CommonCrawl</text><rect x="170" y="54" width="440" height="20" rx="4" fill="#3e7cb1"/><text x="620" y="69" fill="#334155">1.10×</text>
+                    <text x="30" y="97" fill="#334155">C4</text><rect x="170" y="82" width="98" height="20" rx="4" fill="#5b93c4"/><text x="620" y="97" fill="#334155">1.06×</text>
+                    <text x="30" y="125" fill="#334155">Wikipedia</text><rect x="170" y="110" width="30" height="20" rx="4" fill="#b45309"/><text x="620" y="125" fill="#334155">2.45×</text>
+                    <text x="30" y="153" fill="#334155">Books</text><rect x="170" y="138" width="30" height="20" rx="4" fill="#b45309"/><text x="620" y="153" fill="#334155">2.23×</text>
+                    <text x="30" y="181" fill="#334155">GitHub</text><rect x="170" y="166" width="30" height="20" rx="4" fill="#2f855a"/><text x="620" y="181" fill="#334155">0.64×</text>
+                    <text x="30" y="209" fill="#334155">arXiv</text><rect x="170" y="194" width="16" height="20" rx="4" fill="#7c5cbf"/><text x="620" y="209" fill="#334155">1.06×</text>
+                    <text x="30" y="237" fill="#334155">StackExchange</text><rect x="170" y="222" width="13" height="20" rx="4" fill="#7c5cbf"/><text x="620" y="237" fill="#334155">1.03×</text>
+                </g>
+                <text x="170" y="262" font-size="11" fill="#64748b">横条长度 = 采样占比（合计 100%）</text>
+                <line x1="30" y1="278" x2="698" y2="278" stroke="#cbd2d9"/>
+                <text x="30" y="298" font-size="11" fill="#52606d">右侧为该子集在训练 1.4T tokens 时被遍历的轮数（论文表1）；占比与轮数均为原论文数字</text>
+            </svg>
+            <figcaption><strong>图 9-1.</strong> LLaMA 1 的七类数据来源。条长表示采样占比，右侧数字表示该子集被遍历的轮数（论文表1）。Wikipedia 占比仅 4.5% 却刷了 2.45 轮，GitHub 同样 4.5% 却只刷了 0.64 轮——后者甚至没跑完一遍，说明代码数据在当时仍是稀缺资源。</figcaption>
+        </figure>
 
         <div class="tip">
             <strong>数据配比的消融实验：</strong> LLaMA团队在论文中提到，他们对数据配比做了大量的消融实验。一个重要的发现是：如果只使用CommonCrawl训练，模型的知识面会严重偏向网页常见话题，对长尾知识（如罕见的历史事件、冷门的科学概念）的掌握很差。添加Wikipedia、Books和arXiv后，模型对事实性知识的准确率提升了约15%。而加入GitHub和StackExchange后，模型的代码生成和逻辑推理能力有明显的跃升。
         </div>
 
-        <h3>9.2 数据清洗流水线</h3>
+        <h2 id="sec-9-2">9.2 数据清洗流水线</h2>
 
         <p>原始数据直接用于训练是不可行的。CommonCrawl的一个月dump就有数十TB的原始网页HTML，里面充斥着广告、导航栏、重复内容、乱码文本、PII（个人身份信息）等垃圾。LLaMA团队构建了一套多阶段的数据清洗流水线：</p>
+
+        <figure>
+            <svg viewBox="0 0 720 190" role="img" aria-labelledby="fig-9-2-title fig-9-2-desc" font-family="system-ui, sans-serif">
+                <title id="fig-9-2-title">预训练数据的四阶段清洗流水线</title>
+                <desc id="fig-9-2-desc">原始网页依次经过语言识别与过滤、质量过滤、去重、PII 移除四个阶段，每阶段用不同技术并逐步丢弃噪声。</desc>
+                <text x="30" y="28" font-size="15" font-weight="700" fill="#1f2933">原始网页 → 可训练语料：四道关口</text>
+                <g font-size="12" text-anchor="middle">
+                    <rect x="25" y="58" width="150" height="72" rx="10" fill="#e1f0fa" stroke="#3e7cb1"/>
+                    <text x="100" y="90" font-weight="600" fill="#1e3a8a">① 语言识别</text><text x="100" y="110" fill="#52606d">fastText 语种分类</text>
+                    <rect x="195" y="58" width="150" height="72" rx="10" fill="#fbe9e1" stroke="#c05621"/>
+                    <text x="270" y="90" font-weight="600" fill="#7b341e">② 质量过滤</text><text x="270" y="110" fill="#52606d">fastText 二分类器</text>
+                    <rect x="365" y="58" width="150" height="72" rx="10" fill="#fef3c7" stroke="#b45309"/>
+                    <text x="440" y="90" font-weight="600" fill="#92400e">③ 去重</text><text x="440" y="110" fill="#52606d">MinHash / 后缀数组</text>
+                    <rect x="535" y="58" width="150" height="72" rx="10" fill="#e3f4ea" stroke="#2f855a"/>
+                    <text x="610" y="90" font-weight="600" fill="#22543d">④ PII 移除</text><text x="610" y="110" fill="#52606d">正则规则</text>
+                </g>
+                <g stroke="#94a3b8" stroke-width="2" fill="none">
+                    <path d="M177 94 h14"/><path d="M347 94 h14"/><path d="M517 94 h14"/>
+                </g>
+                <text x="30" y="166" font-size="11" fill="#52606d">每道关口都在丢数据；论文表1 中 CommonCrawl 清洗后只剩 3.3 TB 磁盘体积，可见筛选之严</text>
+            </svg>
+            <figcaption><strong>图 9-2.</strong> 预训练数据的四阶段清洗流水线：语言识别 → 质量过滤 → 去重 → PII 移除。前三道决定“留下什么文本”，最后一道决定“删掉什么隐私”。论文只给出清洗后的最终体积（CommonCrawl 3.3 TB、C4 783 GB），未公开每一道的具体过滤率。</figcaption>
+        </figure>
 
         <p><strong>第一阶段：语言识别与过滤</strong></p>
         <p>使用fastText训练的语言分类器对每个文档进行语言判断，只保留以目标语言（主要是英语）为主的文档。这一阶段过滤掉了约30%的非目标语言网页。注意LLaMA 1主要面向英语，非英语数据被大量过滤——这也是LLaMA 1中文能力薄弱的主要原因之一。</p>
@@ -178,10 +234,10 @@ def quality_filter(doc, threshold=0.4):
         <p>使用基于规则的方法（正则表达式）移除明显的个人身份信息：邮箱地址、IP地址、身份证号、电话号码等。这一步不仅是法律合规要求，也能防止模型在生成时"记忆"并泄露这些信息。LLaMA的实现相对保守——只移除明显匹配的模式，而不是尝试识别所有可能的PII。</p>
 
         <div class="highlight">
-            <strong>一个值得深思的数据点：</strong> 从200TB的原始CommonCrawl数据到5TB的干净文本——97.5%的数据被丢弃。这意味着你喂给模型的每100个token中，只有2.5个token最终留在了训练集里。这个残酷的筛选比例说明了大模型训练中"数据质量优先"的哲学：宁可饿着，也不吃垃圾食品。
+            <strong>一个值得深思的数据点：</strong> 论文表1 给出的口径是：CommonCrawl 清洗后只剩 <strong>3.3 TB</strong> 的磁盘体积，C4 为 783 GB。而原始 CommonCrawl 单月 dump 就动辄数十 TB（原始体积为教学示意，论文未给出确切数值）——也就是说，绝大多数原始网页都在清洗中被丢弃。这个残酷的筛选比例说明了大模型训练中“数据质量优先”的哲学：宁可饿着，也不吃垃圾食品。
         </div>
 
-        <h3>9.3 LLaMA 2的数据改进</h3>
+        <h2 id="sec-9-3">9.3 LLaMA 2的数据改进</h2>
 
         <p>LLaMA 2在数据工程上做了三个主要改进：</p>
 
@@ -191,7 +247,7 @@ def quality_filter(doc, threshold=0.4):
 
         <p><strong>第三：数据配比的优化。</strong> LLaMA 2略微调整了数据配比，增加了高质量来源（Wikipedia、Books）的采样权重，减少了CommonCrawl的相对占比。这个调整基于LLaMA 1训练后的消融实验——团队发现高质量数据的边际收益递减速度远慢于低质量数据。</p>
 
-        <h3>9.4 LLaMA 3的数据革命</h3>
+        <h2 id="sec-9-4">9.4 LLaMA 3的数据革命</h2>
 
         <p>LLaMA 3在数据工程上的投入可以用"惊人"来形容。从LLaMA 2的2T tokens到LLaMA 3的15.6T tokens，数据量增长了近8倍。但这不仅仅是数量的增长——数据工程方法论上也有了根本性的变化。</p>
 
@@ -250,13 +306,48 @@ def quality_filter(doc, threshold=0.4):
             <strong>一个有趣的发现：</strong> LLaMA 3论文中披露了一个反直觉的结果——数据质量筛选并不是"越严格越好"。当质量筛选阈值过高时（即只保留最高质量的数据），模型的知识广度和多样性反而下降了。原因很简单：高度统一的高质量数据风格会导致模型的输出风格单一化，缺乏对不同类型文本的适应能力。最终LLaMA 3选择了中等偏严的筛选阈值，在质量和多样性之间取得了平衡。
         </div>
 
-        <h3>9.5 数据质量 vs 数量的核心权衡</h3>
+        <h2 id="sec-9-5">9.5 数据质量 vs 数量的核心权衡</h2>
 
         <p>LLaMA系列的演进历程，本质上也是一部"数据质量与数量"的权衡史。让我们把它用一个框架来理解：</p>
 
         <p><strong>LLaMA 1的发现：</strong> 多不一定好。在固定算力下，用较少但更高质量的数据训练较小的模型，效果优于用大量低质数据训练更大的模型。这是<strong>数据质量 > 模型规模</strong>的实证。</p>
 
         <p><strong>LLaMA 3的发现：</strong> 在数据经过充分筛选和配比优化后，"量大管饱"仍然有效。15.6T tokens让405B模型获得了质的飞跃——但如果这15.6T tokens没有经过严格筛选，效果会大打折扣。<strong>质量和数量不是互斥的，而是层级关系——先有质量，再谈数量。</strong></p>
+
+        <div class="math-equation" role="group" aria-label="采样轮数定义">
+            <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="采样轮数定义公式，可横向滚动" style="overflow-x:auto">
+                <math display="block" aria-label="数据源 i 的采样轮数 epochs 下标 i，等于从该源抽取的 token 总数 T 乘以其采样占比 p 下标 i，再除以该源的规模 D 下标 i">
+                    <mrow>
+                        <msub><mtext>epochs</mtext><mi>i</mi></msub><mo>=</mo>
+                        <mfrac><mrow><mi>T</mi><mo>&#215;</mo><msub><mi>p</mi><mi>i</mi></msub></mrow><mrow><mrow><mo>|</mo><msub><mi>D</mi><mi>i</mi></msub><mo>|</mo></mrow></mrow></mfrac>
+                    </mrow>
+                </math>
+            </div>
+        </div>
+
+        <p>其中 <em>T</em> 是总训练 token 数（如 LLaMA 1 的 1.4T），<em>p<sub>i</sub></em> 是源 <em>i</em> 的采样占比，<em>|D<sub>i</sub>|</em> 是该源自身的规模。当 <em>p<sub>i</sub></em> 很小而轮数却大于 1 时，就说明这个小源被“多刷了几遍”。</p>
+
+        <div class="widget" role="group" aria-label="高质量数据上采样演示">
+            <label for="upsample">拖动滑块改变高质量源（Wikipedia）的使用轮数：<output id="upsample-out">1.0×</output></label>
+            <input type="range" id="upsample" min="0.5" max="4" step="0.5" value="1">
+            <div class="readout" id="upsample-readout">…</div>
+            <p>示意：设 Wikipedia 规模约 63B tokens（按 1.4T × 4.5% 的教学估算），使用轮数 k 时贡献 k × 63B tokens。论文表1 中 Wikipedia 实际被遍历 2.45 轮——这就是“把高信息密度的小数据集多刷几遍”的具体含义。</p>
+        </div>
+        <script>
+        (function () {
+            var s = document.getElementById('upsample');
+            var out = document.getElementById('upsample-readout');
+            var sizeB = 63;
+            function render() {
+                var k = Number(s.value);
+                document.getElementById('upsample-out').textContent = k.toFixed(1) + '×';
+                var tokensB = sizeB * k;
+                out.textContent = 'Wikipedia 贡献 ' + tokensB.toFixed(0) + 'B tokens，占 1.4T 的约 ' + (tokensB / 1400 * 100).toFixed(1) + '%';
+            }
+            s.addEventListener('input', render);
+            render();
+        })();
+        </script>
 
         <div class="highlight">
             <strong>一个实用的建议：</strong> 如果你在有限预算下训练自己的大模型，下面是数据工程的优先级排序：<br>
@@ -266,7 +357,7 @@ def quality_filter(doc, threshold=0.4):
             4. 合成数据增强（生成高质量补充数据）——大规模训练时才有显著收益
         </div>
 
-        <h3>9.6 文档级去重 vs 行级去重</h3>
+        <h2 id="sec-9-6">9.6 文档级去重 vs 行级去重</h2>
 
         <p>去重是数据工程中最容易被忽视但又影响极大的环节。我们可以把去重分为两个粒度来看：</p>
 
@@ -296,7 +387,7 @@ def quality_filter(doc, threshold=0.4):
             <a href="10.html">下一章 →</a>
         </div>
 
-    </div>
+    </main>
 </div>
 </div>
 </body>
