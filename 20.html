@@ -9,7 +9,7 @@
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>🦙 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 LLaMA系列概述</a></li>
@@ -42,53 +42,67 @@
             <li><a href="28.html">第28章 开源LLM生态与未来趋势</a></li>
         </ul>
     </div>
-    <div class="main-content">
+    <main class="main-content" id="content">
 
-        <h2>第20章 多模态融合</h2>
+        <h1>第20章 多模态融合</h1>
+
+        <nav class="toc" aria-label="本章小节导航">
+            <strong>本章导航：</strong>
+            <a href="#sec-20-1">20.1 多模态架构</a> ·
+            <a href="#sec-20-2">20.2 视觉编码器</a> ·
+            <a href="#sec-20-3">20.3 跨模态连接器</a> ·
+            <a href="#sec-20-4">20.4 训练策略</a> ·
+            <a href="#sec-20-5">20.5 能力全景</a> ·
+            <a href="#sec-20-6">20.6 对比其他方案</a> ·
+            <a href="#sec-20-7">20.7 训练数据</a> ·
+            <a href="#sec-20-8">20.8 多模态评估</a>
+        </nav>
 
         <p>同学们好，欢迎来到第20章。这一章我们要讲一个非常"性感"的话题——多模态。上一章我们看完了LLaMA 3 405B那个庞然大物是怎么从数据到训练一步步诞生的。但405B再大也只是"文本模型"——它只能处理文字。而在真实世界中，信息以各种形态存在：图片、图表、公式截图、产品照片……如果LLaMA只能理解文字，那很多应用场景就做不了。</p>
 
-        <p>LLaMA 3.2 Vision的发布标志着LLaMA家族正式进入多模态时代。从纯文本到文本+图像的跨越，不仅仅是新增一个"视觉模块"那么简单——它涉及到架构设计、训练策略、数据配比、评估方法等全方位的变化。这一章我会带你一一拆解。</p>
+        <p>LLaMA 3.2 Vision的发布标志着LLaMA家族正式进入多模态时代。从纯文本到文本+图像的跨越，不仅仅是新增一个"视觉模块"那么简单——它涉及到架构设计、训练策略、数据配比、评估方法等全方位的变化。这一章我会带你一一拆解。多模态部分的一般范式可参考 <a href="https://arxiv.org/abs/2407.21783">LLaMA 3 技术报告</a>（arXiv:2407.21783），具体视觉参数以 Meta 发布的 LLaMA 3.2 模型卡为准。</p>
 
         <p>在开始之前，我想先聊一个切身体会。2023年底，我参与了一个"发票OCR+信息抽取"的项目，想用LLaMA来处理扫描版发票的结构化信息提取。最初的方案是：先用OCR引擎把发票图片转成文字，然后把文字喂给LLaMA 2去抽取关键字段。结果错漏百出的——OCR漏掉了表格线框内的金额，LLaMA基于不完整的文字信息给出了错误的抽取结果。如果当时有LLaMA 3.2 Vision这样的多模态模型，直接将发票图片作为输入，让模型"看图说话"，很多问题就迎刃而解了。这个案例告诉我们：<strong>多模态不是技术炫技，而是在很多场景下解决问题的必要能力。</strong></p>
 
-        <h3>20.1 LLaMA 3.2 Vision多模态架构</h3>
+        <h2 id="sec-20-1">20.1 LLaMA 3.2 Vision多模态架构</h2>
 
         <p>LLaMA 3.2 Vision的多模态架构可以总结为一条清晰的公式：<strong>视觉编码器 + 连接器 + 语言模型</strong>。这个三段式结构几乎是目前所有多模态大模型的标配方案。让我们逐一解剖。</p>
 
         <p>先来看一张整体架构图：</p>
 
-        <pre><code>用户输入:
-  ┌─────────────┐   ┌──────────────┐
-  │  文本输入    │   │   图像输入    │
-  │ "这张图里   │   │   ┌──────┐   │
-  │  有什么?"   │   │   │ .jpg │   │
-  └──────┬──────┘   └───┬──┬───┘   │
-         │              │  └───────┘
-         ▼              ▼
-  ┌──────────────────────────────┐
-  │       分词器 (Tokenizer)      │
-  └───────────┬──────────────────┘
-              │
-  ┌───────────▼──────────────────┐
-  │    视觉编码器 (Pre-trained ViT) │
-  │    将图像 → 图像特征序列       │
-  └───────────┬──────────────────┘
-              │
-  ┌───────────▼──────────────────┐
-  │   连接器 (MLP Projector)      │
-  │    图像特征 → LLaMA输入空间    │
-  └───────────┬──────────────────┘
-              │
-  ┌───────────▼──────────────────┐
-  │    LLaMA语言模型 (冻住)        │
-  │    文本tokens + 图像tokens    │
-  │    联合自回归生成              │
-  └──────────────────────────────┘</code></pre>
+        <figure>
+            <svg viewBox="0 0 720 370" role="img" aria-labelledby="fig-20-1-title fig-20-1-desc" font-family="system-ui, sans-serif">
+                <title id="fig-20-1-title">LLaMA 3.2 Vision 的三段式多模态架构</title>
+                <desc id="fig-20-1-desc">文本输入经分词器变成文本 token；图像输入经视觉编码器（ViT）变成图像特征，再经 MLP 连接器投影到语言模型的 embedding 空间。文本 token 与视觉 token 在冻结的 LLaMA 语言模型中拼接，做标准的自回归生成。</desc>
+                <text x="30" y="26" font-size="15" font-weight="700" fill="#1f2933">视觉编码器 + 连接器 + 语言模型</text>
+                <rect x="40" y="40" width="200" height="46" rx="9" fill="#e1f0fa" stroke="#3e7cb1"/>
+                <text x="140" y="69" font-size="12" text-anchor="middle" fill="#1e3a8a">文本：“这张图里有什么？”</text>
+                <rect x="440" y="40" width="200" height="46" rx="9" fill="#fbe9e1" stroke="#c05621"/>
+                <text x="540" y="69" font-size="12" text-anchor="middle" fill="#7b341e">图像：.jpg</text>
+                <rect x="40" y="130" width="200" height="46" rx="9" fill="#e1f0fa" stroke="#3e7cb1"/>
+                <text x="140" y="152" font-size="12" text-anchor="middle" fill="#1e3a8a">分词器（Tokenizer）</text>
+                <text x="140" y="168" font-size="11" text-anchor="middle" fill="#52606d">→ 文本 tokens</text>
+                <rect x="440" y="130" width="200" height="46" rx="9" fill="#fbe9e1" stroke="#c05621"/>
+                <text x="540" y="152" font-size="12" text-anchor="middle" fill="#7b341e">视觉编码器（ViT）</text>
+                <text x="540" y="168" font-size="11" text-anchor="middle" fill="#52606d">→ 图像特征序列</text>
+                <rect x="440" y="210" width="200" height="46" rx="9" fill="#fef3c7" stroke="#b45309"/>
+                <text x="540" y="232" font-size="12" text-anchor="middle" fill="#92400e">连接器（MLP Projector）</text>
+                <text x="540" y="248" font-size="11" text-anchor="middle" fill="#52606d">→ 映射到文本 embedding 空间</text>
+                <rect x="150" y="300" width="440" height="52" rx="10" fill="#e3f4ea" stroke="#2f855a"/>
+                <text x="370" y="322" font-size="12" text-anchor="middle" fill="#22543d">LLaMA 语言模型（权重冻结）</text>
+                <text x="370" y="340" font-size="11" text-anchor="middle" fill="#52606d">文本 tokens + 视觉 tokens → 标准自回归生成</text>
+                <g stroke="#94a3b8" stroke-width="2" fill="none">
+                    <path d="M140 86 v40"/><path d="M540 86 v40"/><path d="M540 176 v30"/>
+                    <path d="M140 176 v60 q0 14 14 14 h216"/><path d="M540 256 v30 h-30"/>
+                </g>
+                <g fill="#94a3b8"><polygon points="137,126 143,126 140,132"/><polygon points="537,126 543,126 540,132"/><polygon points="537,206 543,206 540,212"/><polygon points="368,246 374,246 371,252"/></g>
+            </svg>
+            <figcaption><strong>图 20-1.</strong> LLaMA 3.2 Vision 的三段式架构：图像先过视觉编码器（ViT）得到特征序列，再经 MLP 连接器投影到语言模型的 embedding 维度，与文本 token 拼接后交给<strong>权重冻结</strong>的 LLaMA 做自回归生成。这样语言模型无需任何架构改动（论文通称 “vision encoder + connector + LLM” 范式，参见 LLaMA 3 技术报告 arXiv:2407.21783 的多模态章节）。</figcaption>
+        </figure>
 
         <p>当用户同时输入文本和图像时，文本走分词器变成token序列，图像走视觉编码器变成"视觉token序列"，然后通过一个投影连接器将视觉token映射到LLaMA的embedding空间。最终，文本token和视觉token在LLaMA语言模型中拼接为一个完整的序列，进行标准的自回归生成。这个方案的精妙之处在于：<strong>语言模型本身不需要做任何架构改动</strong>——它只是把视觉token当作一种"特殊语言"来处理。</p>
 
-        <h3>20.2 视觉编码器设计</h3>
+        <h2 id="sec-20-2">20.2 视觉编码器设计</h2>
 
         <p>LLaMA 3.2 Vision的核心视觉编码器基于预训练的Vision Transformer（ViT）。ViT将图片分割成固定大小的patch（例如16×16像素），每个patch通过线性投影映射成一个embedding，然后输入标准的Transformer编码器进行处理。</p>
 
@@ -137,13 +151,54 @@
             </tr>
         </table>
 
+        <p><small>说明：本表中的分辨率、patch 大小、层数等为讲清 ViT token 化机制的<strong>教学示意</strong>配置，并非官方逐项参数；确切数值请以 Meta 发布的 LLaMA 3.2 模型卡为准。</small></p>
+
+        <p>视觉 token 的数量由图像分辨率与 patch 大小直接决定：</p>
+
+        <div class="math-equation" role="group" aria-label="视觉 token 数公式">
+            <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="视觉 token 数公式，可横向滚动" style="overflow-x:auto">
+                <math display="block" aria-label="单张图片产生的视觉 token 数 N 等于图像高 H 除以 patch 边长 p 再乘以宽 W 除以 p；当 H 等于 W 时 N 等于 (H/p) 的平方">
+                    <mrow>
+                        <msub><mi>N</mi><mtext>img</mtext></msub><mo>=</mo>
+                        <mfrac><mi>H</mi><mi>p</mi></mfrac><mo>&#215;</mo><mfrac><mi>W</mi><mi>p</mi></mfrac>
+                        <mo>,</mo><mspace width="1em"/>
+                        <mi>H</mi><mo>=</mo><mi>W</mi><mo>&#8658;</mo><mi>N</mi><mo>=</mo><msup><mrow><mo>(</mo><mfrac><mi>H</mi><mi>p</mi></mfrac><mo>)</mo></mrow><mn>2</mn></msup>
+                    </mrow>
+                </math>
+            </div>
+        </div>
+
+        <div class="widget" role="group" aria-label="视觉 token 数估算器">
+            <label for="vres">图像边长 H（像素）：<output id="vres-out">448</output></label>
+            <input type="range" id="vres" min="224" max="896" step="32" value="448">
+            <label for="vpatch">patch 边长 p：
+                <select id="vpatch"><option value="14">14</option><option value="16">16</option><option value="32">32</option></select>
+            </label>
+            <div class="readout" id="vtok-readout">…</div>
+            <p>N = (H/p)²（正方形图像）。例如 448 / 14 = 32，32² = 1024 个视觉 token。分辨率翻倍，token 数变成 4 倍——这就是“高分辨率很贵”的算术原因（示例参数为教学示意）。</p>
+        </div>
+        <script>
+        (function () {
+            var r = document.getElementById('vres'), pp = document.getElementById('vpatch');
+            var out = document.getElementById('vtok-readout');
+            function render() {
+                var H = Number(r.value), p = Number(pp.value);
+                document.getElementById('vres-out').textContent = String(H);
+                var grid = Math.round(H / p), n = grid * grid;
+                out.textContent = H + '×' + H + '，patch ' + p + ' → 网格 ' + grid + '×' + grid + ' → ' + n + ' 个视觉 token';
+            }
+            r.addEventListener('input', render); pp.addEventListener('change', render);
+            render();
+        })();
+        </script>
+
         <p>一个值得注意的细节是，LLaMA 3.2 Vision并没有在图像分辨率上追求极致——448×448相对于一些竞品（如GPT-4V的高分辨率模式可以达到1024×1024以上）其实算中等。Meta的考量很务实：更高的分辨率意味着更多的patch、更多的视觉token、更长的序列长度，进而导致推理延迟和显存消耗的线性增长。在"够用"和"高效"之间，Meta选择了平衡。</p>
 
         <div class="tip">
             <strong>工程决策：</strong> 1,024个视觉token对于一个LLM来说已经不算少了。如果每张图产生1,024个token，那么在对话上下文（比如Chat场景）中，每轮对话的视觉token可能会迅速累积。LLaMA 3.2通过设置<strong>最大图像数限制</strong>（通常每轮对话不超过5张图）来防止上下文膨胀。这也是为什么你很少看到多模态LLM在单次推理中处理大量图片的原因——不是模型不支持，而是token预算经不起折腾。
         </div>
 
-        <h3>20.3 跨模态连接器：MLP Projector vs Q-Former</h3>
+        <h2 id="sec-20-3">20.3 跨模态连接器：MLP Projector vs Q-Former</h2>
 
         <p>视觉编码器输出的是一组"视觉特征向量"，但这些向量的维度、语义空间和分布特性与LLaMA的文本embedding空间完全不同。这就是连接器（connector）需要解决的问题——它充当"翻译官"，将视觉特征映射到语言模型能够理解的语义空间中。</p>
 
@@ -195,7 +250,7 @@
             <li><strong>工程效率：</strong> MLP的前向和反向传播都非常高效，在多模态训练中不会成为计算瓶颈。</li>
         </ul>
 
-        <h3>20.4 训练策略：冻住LLaMA，只训视觉组件</h3>
+        <h2 id="sec-20-4">20.4 训练策略：冻住LLaMA，只训视觉组件</h2>
 
         <p>多模态模型的训练策略是整个系统的关键。LLaMA 3.2采用了<strong>冻住LLaMA权重，只训练视觉组件</strong>的策略——这是一种"最小侵入式"的微调方案。具体来说：</p>
 
@@ -252,7 +307,7 @@ def train_multimodal():
         images, instructions, answers = batch
         # 同上，但使用更复杂的指令格式</code></pre>
 
-        <h3>20.5 多模态能力全景</h3>
+        <h2 id="sec-20-5">20.5 多模态能力全景</h2>
 
         <p>训练完成后，LLaMA 3.2 Vision获得了哪些具体的多模态能力？我们来看看几个核心场景：</p>
 
@@ -268,7 +323,7 @@ def train_multimodal():
             <strong>一个实际案例：</strong> 想象你在开产品经理会议，白板上画了一个流程图。你用手机拍照，然后把照片发给LLaMA 3.2 Vision，并提问："根据这个流程图，如果用户注册失败，应该回到哪一步？"模型需要看懂白板上的潦草字迹、箭头指向和方框之间的逻辑关系来回答。这不是简单的OCR——需要理解流程图的语义结构。LLaMA 3.2 Vision在类似任务上的表现已经接近人类水平。
         </div>
 
-        <h3>20.6 对比其他多模态方案</h3>
+        <h2 id="sec-20-6">20.6 对比其他多模态方案</h2>
 
         <p>LLaMA 3.2 Vision并不是唯一的开源多模态大模型。在它之前和同期，还有其他几个具有代表性的多模态方案。理解它们的差异有助于我们更准确地定位LLaMA 3.2 Vision的设计选择。</p>
 
@@ -334,7 +389,7 @@ def train_multimodal():
             <strong>我的观点：</strong> 没有一种多模态架构在所有场景下都是最优的。LLaMA 3.2 Vision的"冻结LLM + MLP连接器"方案在<strong>部署效率和性能之间取得了最好的平衡</strong>。因为语言模型是冻结的，模型权重的体积没有增加，推理时的显存消耗几乎等同于纯文本模型+视觉编码器的开销。这使得LLaMA 3.2 Vision可以轻松部署在消费级GPU上（如RTX 4090）。相比之下，CogVLM的全参数微调方案虽然视觉理解更强，但部署门槛高得多。
         </div>
 
-        <h3>20.7 训练数据</h3>
+        <h2 id="sec-20-7">20.7 训练数据</h2>
 
         <p>多模态模型的训练数据比纯文本模型复杂得多。LLaMA 3.2 Vision使用的训练数据包括几种不同类型：</p>
 
@@ -350,7 +405,7 @@ def train_multimodal():
             <strong>踩坑故事：</strong> 我曾经尝试给LLaMA 3.2 Vision喂了几张"文字密集"的广告海报，结果模型在回答问题时错得离谱——它把海报上的电话号码读错了，还把地址里的街道名和城市名混淆了。后来分析发现，这是因为训练数据中的OCR数据量不足，导致模型对密集文本图片的"细粒度"阅读能力不够。这个问题给我们的教训是：<strong>多模态模型的能力上限很大程度上取决于训练数据的多样性和覆盖范围</strong>。如果你想让模型在某个特定类型的图像上表现好，必须确保训练数据中包含了足够多的同类样本。
         </div>
 
-        <h3>20.8 多模态评估</h3>
+        <h2 id="sec-20-8">20.8 多模态评估</h2>
 
         <p>多模态模型的评估比纯文本模型更加复杂，因为评估维度增加了（不仅要评价文本质量，还要评价视觉理解的准确性）。LLaMA 3.2 Vision在一系列标准的基准测试中进行了评估：</p>
 
@@ -393,6 +448,8 @@ def train_multimodal():
             </tr>
         </table>
 
+        <p><small>说明：多模态基准的具体分数为教学参考值（不同评测配置差异很大），确切数值请以 Meta 发布的 LLaMA 3.2 模型卡为准；此处仅用于说明 LLaMA 3.2 Vision 在文档/图表类任务上的相对优势。</small></p>
+
         <p>从上表可以看出，LLaMA 3.2 Vision在几乎所有基准测试上都大幅领先LLaVA 1.5——差距最大的是DocVQA（88.4 vs 69.2，差了近20分）。这说明LLaMA 3.2 Vision在<strong>文档理解</strong>这一特定领域的优势特别明显。如果你正在构建一个文档扫描和结构化提取的应用，LLaMA 3.2 Vision会是一个比LLaVA好得多的选择。</p>
 
         <p>MMMU（Massive Multi-discipline Multimodal Understanding）是最具挑战性的多模态基准之一，包含大学级别的多学科问题，覆盖艺术、工程、科学等6个领域。LLaMA 3.2 11B在MMMU上得到58.2分，而人类专家在同样的测试中得分约为75-80分，说明多模态模型在深度学科理解上还有差距。</p>
@@ -407,7 +464,7 @@ def train_multimodal():
             <a href="21.html">下一章 →</a>
         </div>
 
-    </div>
+    </main>
 </div>
 </div>
 </body>
