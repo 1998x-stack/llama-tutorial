@@ -9,7 +9,7 @@
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>🦙 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 LLaMA系列概述</a></li>
@@ -42,11 +42,22 @@
             <li><a href="28.html">第28章 开源LLM生态与未来趋势</a></li>
         </ul>
     </div>
-    <div class="main-content">
+    <main class="main-content" id="content">
 
-        <h2>第11章 LLaMA 1完整预训练流程</h2>
+        <h1>第11章 LLaMA 1完整预训练流程</h1>
 
-        <p>从第2章到第10章，我们一步一步拆解了LLaMA架构的每个组件和学习它们背后的设计思路。现在，终于到了把它们"组装"起来的时候了。这一章我们要做的事情非常具体：<strong>完整复盘LLaMA 1预训练的每一个环节</strong>——从硬件搭建到分布式策略，从超参数选择到训练中的关键观测。</p>
+        <nav class="toc" aria-label="本章小节导航">
+            <strong>本章导航：</strong>
+            <a href="#sec-11-1">11.1 训练硬件与环境</a> ·
+            <a href="#sec-11-2">11.2 分布式训练策略</a> ·
+            <a href="#sec-11-3">11.3 超参完整表</a> ·
+            <a href="#sec-11-4">11.4 训练时间与成本</a> ·
+            <a href="#sec-11-5">11.5 权重发布策略</a> ·
+            <a href="#sec-11-6">11.6 训练关键观测</a> ·
+            <a href="#sec-11-7">11.7 深远影响</a>
+        </nav>
+
+        <p>从第2章到第10章，我们一步一步拆解了LLaMA架构的每个组件和学习它们背后的设计思路。现在，终于到了把它们“组装”起来的时候了。这一章我们要做的事情非常具体：<strong>完整复盘LLaMA 1预训练的每一个环节</strong>——从硬件搭建到分布式策略，从超参数选择到训练中的关键观测。本章的训练配置数据均来自 <a href="https://arxiv.org/abs/2302.13971"><em>LLaMA: Open and Efficient Foundation Language Models</em></a>（Touvron 等，arXiv:2302.13971）的正文与表格。</p>
 
         <p>如果说前面几章是在学习"造车的每个零件"，那么这一章就是去参观LLaMA 1的"整车装配线"。你会看到所有零件是如何协同工作的，以及工程师们在生产线上遇到了哪些问题、做了哪些决策。</p>
 
@@ -54,7 +65,7 @@
             <strong>本章的核心目的：</strong> 不是为了让你复刻一个LLaMA 1（你大概率没有2048张A100），而是让你理解大模型训练的<strong>全貌</strong>。当你以后在自己的规模上训练或微调模型时，你能清楚地知道：我现在的每个决策在全局中处于什么位置、有什么影响。这种"全局视角"的价值，远大于单纯记住几个超参数。
         </div>
 
-        <h3>11.1 训练硬件与环境</h3>
+        <h2 id="sec-11-1">11.1 训练硬件与环境</h2>
 
         <p>LLaMA 1的训练在Meta Research Super Cluster（RSC）上完成。RSC是Meta在2022年专门为AI研究搭建的超算集群，高峰期投入了超过16000张NVIDIA A100 GPU。LLaMA 1使用了其中的<strong>2048张A100 80GB GPU</strong>，分布在256台节点上（每节点8卡）。</p>
 
@@ -67,13 +78,13 @@
             <li>节点间通过InfiniBand HDR（200Gbps）互联</li>
         </ul>
 
-        <p>2048张A100 80G在当时是相当奢侈的配置，但如果我们折算一下训练成本——LLaMA 1 65B训练了约21天，消耗了约6.3M GPU-hours。按照2023年的云GPU价格（A100约$2-3/小时），LLaMA 1 65B的单次训练成本约为<strong>1260-1890万美元</strong>。这还是Meta自己集群的"成本价"，如果按AWS或GCP的按需价格，至少要翻2-3倍。</p>
+        <p>2048张A100 80G在当时是相当奢侈的配置。论文的碳足迹表中给出了精确口径：LLaMA-65B的训练共消耗约<strong>1,022,362 GPU-hours</strong>（约102万卡时），对应约449 MWh电能与约173吨CO₂当量（数据见论文表15）。按2023年云GPU约$2–3/小时的价格折算，65B单次训练成本约为<strong>200万–310万美元</strong>（价格折算为教学估算，非论文数字）；如果按AWS或GCP的按需价格，还要再高一些。</p>
 
         <div class="tip">
             <strong>算力成本的一个有趣视角：</strong> LLaMA 1的预训练成本按2023年的标准，对于大公司来说"可以接受但也不便宜"。但到了LLaMA 3 405B，训练规模增加到15.6T tokens，使用约16000张H100 GPU，训练时长约54天，总算力消耗约为<strong>3000万GPU-hours</strong>——是LLaMA 1 65B的约500倍。仅仅18个月，训练成本就涨了两个数量级。这让我想起摩尔定律的"反向版本"：AI训练的算力需求每18个月增长约10倍。
         </div>
 
-        <h3>11.2 分布式训练策略：3D并行</h3>
+        <h2 id="sec-11-2">11.2 分布式训练策略：3D并行</h2>
 
         <p>2048张GPU当然不能简单地用"数据并行"来管理——一张卡装不下整个模型（65B参数的FP32版本需要260GB，即使BF16也需要130GB，远超A100 80G的单卡容量）。LLaMA使用了<strong>3D并行</strong>（3D Parallelism）策略：</p>
 
@@ -106,6 +117,55 @@
 
         <p>3D并行的核心挑战是<strong>通信效率</strong>。张量并行需要高带宽低延迟的通信（因为每步都需要同步），所以TP维度限制在单节点内（8卡），利用NVSwitch的600GB/s带宽。流水线并行的通信量较小（只传递activation的边界），可以通过InfiniBand在节点间传输。数据并行则需要定期同步梯度（all-reduce），通信压力适中。</p>
 
+        <figure>
+            <svg viewBox="0 0 720 320" role="img" aria-labelledby="fig-11-1-title fig-11-1-desc" font-family="system-ui, sans-serif">
+                <title id="fig-11-1-title">LLaMA 1 的 3D 并行：张量并行、流水线并行、数据并行</title>
+                <desc id="fig-11-1-desc">左侧：单个节点内 8 张 A100 通过 NVSwitch 组成张量并行组。中部：模型层切成 8 个流水线 stage，沿节点间 InfiniBand 传递激活。右侧：32 份数据并行副本各自处理不同数据并同步梯度。</desc>
+                <text x="30" y="28" font-size="15" font-weight="700" fill="#1f2933">3D 并行 = TP × PP × DP</text>
+                <text x="30" y="52" font-size="12" fill="#52606d">三个维度分别解决“层内放不下”“层数放不下”“吞吐不够”三个问题</text>
+                <!-- TP -->
+                <text x="30" y="92" font-size="13" font-weight="600" fill="#334e68">① 张量并行 TP=8</text>
+                <rect x="30" y="102" width="180" height="150" rx="8" fill="#e1f0fa" stroke="#3e7cb1"/>
+                <text x="120" y="122" font-size="11" text-anchor="middle" fill="#3e7cb1">单节点 · NVSwitch</text>
+                <g fill="#3e7cb1">
+                    <rect x="52" y="134" width="34" height="26" rx="4"/><rect x="96" y="134" width="34" height="26" rx="4"/>
+                    <rect x="140" y="134" width="34" height="26" rx="4"/><rect x="184" y="134" width="34" height="26" rx="4"/>
+                    <rect x="52" y="170" width="34" height="26" rx="4"/><rect x="96" y="170" width="34" height="26" rx="4"/>
+                    <rect x="140" y="170" width="34" height="26" rx="4"/><rect x="184" y="170" width="34" height="26" rx="4"/>
+                </g>
+                <text x="120" y="222" font-size="11" text-anchor="middle" fill="#52606d">一层切成 8 份，同层算子跨卡</text>
+                <text x="120" y="240" font-size="11" text-anchor="middle" fill="#52606d">每步都要通信，故限制在节点内</text>
+                <!-- PP -->
+                <text x="270" y="92" font-size="13" font-weight="600" fill="#7b341e">② 流水线并行 PP=8</text>
+                <g fill="#fbe9e1" stroke="#c05621">
+                    <rect x="270" y="102" width="170" height="28" rx="5"/><rect x="270" y="138" width="170" height="28" rx="5"/>
+                    <rect x="270" y="174" width="170" height="28" rx="5"/><rect x="270" y="210" width="170" height="28" rx="5"/>
+                </g>
+                <g font-size="11" fill="#7b341e" text-anchor="middle">
+                    <text x="355" y="120">stage 0（第 1–10 层）</text>
+                    <text x="355" y="156">stage 1（第 11–20 层）</text>
+                    <text x="355" y="192">stage 2 …</text>
+                    <text x="355" y="228">stage 7（第 71–80 层）</text>
+                </g>
+                <text x="355" y="262" font-size="11" text-anchor="middle" fill="#52606d">层太多，沿节点间 InfiniBand 串起来</text>
+                <!-- DP -->
+                <text x="510" y="92" font-size="13" font-weight="600" fill="#22543d">③ 数据并行 DP=32</text>
+                <g fill="#e3f4ea" stroke="#2f855a">
+                    <rect x="516" y="116" width="150" height="120" rx="8"/>
+                    <rect x="502" y="104" width="150" height="120" rx="8"/>
+                    <rect x="488" y="92" width="150" height="120" rx="8"/>
+                </g>
+                <text x="563" y="150" font-size="22" font-weight="700" text-anchor="middle" fill="#2f855a">×32</text>
+                <text x="563" y="176" font-size="11" text-anchor="middle" fill="#22543d">各自吃不同数据</text>
+                <text x="563" y="194" font-size="11" text-anchor="middle" fill="#22543d">梯度 all-reduce</text>
+                <text x="563" y="262" font-size="11" text-anchor="middle" fill="#52606d">提高吞吐，通信压力适中</text>
+                <!-- bottom summary -->
+                <line x1="30" y1="284" x2="690" y2="284" stroke="#cbd2d9"/>
+                <text x="30" y="306" font-size="12" fill="#1f2933">总量：8 × 8 × 32 = 2048 张 A100-80GB；实测约 380 tokens/sec/GPU → 1.4T tokens 约需 21 天（论文 §2.3）</text>
+            </svg>
+            <figcaption><strong>图 11-1.</strong> LLaMA 1 三个并行维度的分工：张量并行（TP）处理“层内放不下”，流水线并行（PP）处理“层数放不下”，数据并行（DP）处理“吞吐不够”。图中 <strong>TP=8 / PP=8 / DP=32 的具体切分是按总量 2048 卡反推的教学示意</strong>；论文只明确给出“2048 张 A100-80GB、约 380 tokens/sec/GPU、训练 1.4T tokens 约 21 天”（§2.3）与并行技术的引用来源。</figcaption>
+        </figure>
+
         <pre><code># 3D并行的概念示意图（非真实代码）
 # 假设模型有80层，使用TP=8, PP=8, DP=32
 
@@ -135,7 +195,7 @@ for batch in dataloader:
             <strong>踩坑实录：</strong> 我自己在做分布式训练时，最常遇到的问题不是代码逻辑错误，而是<strong>通信瓶颈</strong>。有一次我们用了4台8卡机器（共32卡）训练一个13B模型，TFLOPS利用率只有理论峰的35%。一番排查发现根本原因：我们的PP设置把模型分成了16个stage，每个stage只有不到2层，导致每个stage的计算时间（几毫秒）远小于通信时间（几十毫秒），整个pipeline的"气泡"（bubble）巨大。解决方案是降低PP维度、增大TP维度，让每个stage的计算量匹配通信带宽。最终我们把TFLOPS利用率从35%提升到了55%。<strong>分布式策略的选择不能照着论文抄，你的硬件拓扑决定了最优配置。</strong>
         </div>
 
-        <h3>11.3 各规模训练超参完整表</h3>
+        <h2 id="sec-11-3">11.3 各规模训练超参完整表</h2>
 
         <p>LLaMA 1发布了4个规模版本：7B、13B、33B、65B。以下是它们的完整训练配置：</p>
 
@@ -239,21 +299,57 @@ for batch in dataloader:
             <strong>关于Batch Size的一个关键讨论：</strong> LLaMA 1所有规模都使用4M tokens的batch size。这个选择来自与Chinchilla论文的对比——Chinchilla使用约3M tokens的batch size。为什么batch size不随模型规模变化？因为batch size主要影响的是梯度估计的噪声水平，而梯度噪声更多取决于训练数据的多样性，而非模型参数量。所以在实践中，很多大模型训练都维持了一个相对固定的batch size（3-4M tokens），而通过调整学习率来适配不同规模的模型。
         </div>
 
-        <h3>11.4 训练时间与成本分析</h3>
+        <h2 id="sec-11-4">11.4 训练时间与成本分析</h2>
 
         <p>LLaMA 1 65B在2048张A100上训练约21天，这意味着每秒要处理约7.7M tokens（1.4T tokens / 21天 / 86400秒）。考虑到4M token的batch size，这意味着每秒约2个训练步（2 steps/sec）。这个吞吐量对应的TFLOPS利用率约为45-50%——对于大规模分布式训练来说，这是一个相当不错的数字。</p>
 
-        <p>总算力消耗的对比：</p>
+        <p>论文的碳足迹表（表15）给出了同一数据中心口径下的总算力消耗，可以直接对比：</p>
 
         <ul>
-            <li>LLaMA 1 65B: ~6.3M GPU-hours（2048 GPU × 21天 × 24小时）</li>
-            <li>GPT-3 175B: ~34.5M GPU-hours（据估计）</li>
-            <li>LLaMA 3 405B: ~30.8M GPU-hours</li>
+            <li>LLaMA 1 65B：<strong>1,022,362 GPU-hours</strong>（约 1.02M），449 MWh，173 tCO₂eq</li>
+            <li>OPT-175B（同为 175B 量级）：809,472 GPU-hours，356 MWh</li>
+            <li>BLOOM-175B：1,082,880 GPU-hours，475 MWh</li>
         </ul>
 
-        <p>LLaMA 1 65B的算力消耗只有GPT-3 175B的约1/5，但性能却达到了与GPT-3相当甚至超越的水平。这种效率的提升来自于我们前面章节讨论的所有优化——RoPE、RMSNorm、SwiGLU、更精细的数据配比——的累加效应。每一单项优化的提升可能在5-15%之间，但叠加起来就产生了质的差异。</p>
+        <p>可以看到，65B 的 LLaMA 1 训练开销与 175B 的 OPT / BLOOM 基本在同一量级（约 0.8–1.1M GPU-hours），却达到了与这些大得多的模型相当甚至更好的效果。这正是论文反复强调的“高效”：<strong>不是把模型堆得更大，而是用更好的数据与更合理的架构把每一卡时花得更值。</strong>（上述均为论文表15 原始数字；碳足迹按论文给定的公式与 PUE 计算。）</p>
 
-        <h3>11.5 模型权重发布策略</h3>
+        <div class="math-equation" role="group" aria-label="碳足迹计算公式">
+            <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="碳足迹计算公式，可横向滚动" style="overflow-x:auto">
+                <math display="block" aria-label="能耗瓦时 Wh 等于 GPU 卡时 GPU-h 乘以单卡功率 Power 再乘以电能利用效率 PUE；碳排放吨数 tCO2eq 约等于兆瓦时 MWh 乘以电网碳强度 CI">
+                    <mrow>
+                        <mtext>Wh</mtext><mo>=</mo><mtext>GPU-h</mtext><mo>&#215;</mo><mtext>Power</mtext><mo>&#215;</mo><mtext>PUE</mtext>
+                        <mo>,</mo><mspace width="1.5em"/>
+                        <msub><mtext>tCO</mtext><mn>2</mn></msub><mtext>eq</mtext><mo>&#8776;</mo><mtext>MWh</mtext><mo>&#215;</mo><mtext>CI</mtext>
+                    </mrow>
+                </math>
+            </div>
+        </div>
+
+        <p>把 65B 的数字代进去：A100-80GB 功耗约 400W，假设 PUE 约为 1.1，则 1,022,362 GPU-h × 400W × 1.1 ≈ 4.5×10⁸ Wh ≈ 450 MWh，与论文表15 的 449 MWh 一致。这也解释了为什么“算力消耗”最终会落到电费和碳排放上——大模型训练的规模效应，同时体现在金钱、电力与碳三个账本上。</p>
+
+        <div class="widget" role="group" aria-label="训练时长估算器">
+            <label for="tps">拖动滑块改变单卡吐吞（tokens/sec/GPU）：<output id="tps-out">380</output></label>
+            <input type="range" id="tps" min="100" max="600" step="10" value="380">
+            <div class="readout" id="tps-readout">…</div>
+            <p>按 2048 张 A100-80GB、1.4T tokens 计算：总吐吞 = 每卡吐吞 × 2048，训练天数 = 1.4×10¹² ÷ 总吐吞 ÷ 86400。论文实测每卡约 380 tokens/sec、对应约 21 天（§2.3）；拖动滑块可以看到吐吞对总时长的杠杆效应——每卡吐吞翻倍，训练天数减半。</p>
+        </div>
+        <script>
+        (function () {
+            var slider = document.getElementById('tps');
+            var out = document.getElementById('tps-readout');
+            function render() {
+                var rate = Number(slider.value);
+                document.getElementById('tps-out').textContent = String(rate);
+                var total = rate * 2048;
+                var days = 1.4e12 / total / 86400;
+                out.textContent = '每卡 ' + rate + ' tok/s → 总吐吞 ' + (total / 1e6).toFixed(2) + 'M tok/s → 约 ' + days.toFixed(1) + ' 天';
+            }
+            slider.addEventListener('input', render);
+            render();
+        })();
+        </script>
+
+        <h2 id="sec-11-5">11.5 模型权重发布策略</h2>
 
         <p>LLaMA 1的权重发布策略在整个AI社区引起了很大的讨论。Meta最初只开放了<strong>LLaMA 1 7B、13B和30B</strong>的权重，而<strong>65B</strong>的权重虽然论文中做了详细报告，但并没有随论文一起公开发布。</p>
 
@@ -271,7 +367,7 @@ for batch in dataloader:
             <strong>一个真实的灰色地带案例：</strong> 2023年3月，LLaMA 1的权重通过4chan上的一个帖子被泄露。有人在Meta的申请页面上用".edu"邮箱提交了虚假的研究申请，获得了权重下载链接后公开传播。这件事在AI社区引发了激烈的讨论：一方面，泄露确实违背了Meta的许可条款；另一方面，正是因为这次泄露，才有了后续Alpaca、Vicuna等大量LLaMA基座衍生项目的诞生。可以说，<strong>LLaMA生态的繁荣在一定程度上建立在这"不完美的开源"之上。</strong>Meta后续的LLaMA 2和LLaMA 3都选择了完全开放权重，可能也是意识到了"防君子不防小人"的道理。
         </div>
 
-        <h3>11.6 训练过程中的关键观测</h3>
+        <h2 id="sec-11-6">11.6 训练过程中的关键观测</h2>
 
         <p>LLaMA 1的论文披露了一些训练过程中的有趣观测：</p>
 
@@ -299,7 +395,7 @@ for batch in dataloader:
             <strong>核心发现——数据质量 > 模型规模：</strong> LLaMA 1最重要的结论在论文中被反复强调：通过高质量的精细筛选数据，较小的模型（13B）可以达到甚至超越大规模模型（GPT-3 175B）的效果。这在当时是一个颠覆性的认知——因为在GPT-3时代，大家的普遍理解是"更大的模型=更好的效果"。LLaMA 1用实验数据证明了这个等式不成立，前提条件是你有更好的数据。
         </div>
 
-        <h3>11.7 LLaMA 1的深远影响</h3>
+        <h2 id="sec-11-7">11.7 LLaMA 1的深远影响</h2>
 
         <p>回顾LLaMA 1的意义，不只是在技术层面——它改变了大模型产业的经济模式。在LLaMA 1之前，训练一个可用的大语言模型被普遍认为需要千万美元级别的预算。但LLaMA 1证明，通过精细的架构设计和数据工程，百万美元级别的预算也能训练出世界级的模型。这个"降维打击"的效果有多显著？</p>
 
@@ -319,7 +415,7 @@ for batch in dataloader:
             <a href="12.html">下一章 →</a>
         </div>
 
-    </div>
+    </main>
 </div>
 </div>
 </body>
