@@ -83,37 +83,37 @@
             <tr>
                 <td>Python</td>
                 <td>~40%</td>
-                <td>81.2%</td>
+                <td>72.6%</td>
                 <td>数据科学, AI, 后端</td>
             </tr>
             <tr>
                 <td>JavaScript/TypeScript</td>
                 <td>~15%</td>
-                <td>76.5%</td>
+                <td>68.4%</td>
                 <td>Web开发, Node.js</td>
             </tr>
             <tr>
                 <td>Java</td>
                 <td>~10%</td>
-                <td>72.8%</td>
+                <td>65.1%</td>
                 <td>企业级应用, Android</td>
             </tr>
             <tr>
                 <td>C++</td>
                 <td>~8%</td>
-                <td>69.3%</td>
+                <td>62.0%</td>
                 <td>系统编程, 游戏引擎</td>
             </tr>
             <tr>
                 <td>Rust</td>
                 <td>~5%</td>
-                <td>65.1%</td>
+                <td>58.2%</td>
                 <td>系统编程, 区块链, WASM</td>
             </tr>
             <tr>
                 <td>Go</td>
                 <td>~4%</td>
-                <td>71.2%</td>
+                <td>63.7%</td>
                 <td>后端微服务, 云原生</td>
             </tr>
             <tr>
@@ -124,9 +124,9 @@
             </tr>
         </table>
 
-        <p><small>说明：上表中“LLaMA 3 代码数据占比”为<strong>教学示意</strong>（论文未公开逐语言的数据占比）；“HumanEval 通过率”一列中，Python 行的 81.2% 对应 LLaMA 3 8B 在 HumanEval（仅测 Python 的基准）上的公开成绩，其余语言行的数值为便于横向对比的<strong>教学近似</strong>，并非论文原始数据。</small></p>
+        <p><small>说明：上表中“LLaMA 3 代码数据占比”为<strong>教学示意</strong>（论文未公开逐语言的数据占比）；“HumanEval 通过率”一列中，Python 行的 72.6% 为 LLaMA 3 8B 在 HumanEval（pass@1，仅测 Python）上的成绩，取自 LLaMA 3 技术报告主结果表（arXiv:2407.21783）；其余语言行的数值为便于横向对比的<strong>教学示意</strong>，并非论文原始数据。</small></p>
 
-        <p>注意上表中的HumanEval通过率——這是业界最著名的代码生成基准之一，测试模型根据函数签名和docstring生成Python代码的能力。LLaMA 3 8B的得分为81.2%，70B得分约为87%，405B得分高达91%。作为对比，GPT-4在HumanEval上的得分约为87%（2023年版本）。这意味着LLaMA 3 405B在纯代码生成能力上已经接近甚至达到了GPT-4的水平。</p>
+        <p>注意上表中的HumanEval通过率——这是业界最著名的代码生成基准之一，测试模型根据函数签名和docstring生成Python代码的能力。LLaMA 3 8B 的得分为 72.6%，70B 为 80.5%，405B 为 89.0%（均取自 LLaMA 3 技术报告，arXiv:2407.21783）。作为对比，GPT-4 在 HumanEval 上的得分约为 87%（2023 年版本，属公开宣传口径）。这意味着 LLaMA 3 405B 在纯代码生成能力上已达到甚至略微超过该版本的 GPT-4。</p>
 
         <div class="tip">
             <strong>有意思的发现：</strong> 代码训练数据的质量和配比对模型能力的影响远远超过了数量。Meta发现，如果只是简单地增加代码数据量而不做质量过滤，反而会降低模型在其他任务上的表现。原因是低质量的代码（如过时的API用法、错误的示例代码、不规范的编码风格）会"污染"模型的语言输出。所以，代码数据的<strong>去重、质量过滤和许可证审查</strong>是必不可少的预处理步骤。
