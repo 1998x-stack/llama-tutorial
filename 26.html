@@ -63,7 +63,7 @@
 
         <h2 id="sec-26-1">26.1 LLaMA 3.2系列概览</h2>
 
-        <p>2024年9月，Meta发布了LLaMA 3.2，这是LLaMA系列中第一个专门为边缘设备设计的版本（模型定位与参数见 Meta 的 <a href="https://arxiv.org/abs/2407.21783">LLaMA 3 Herd of Models 报告 arXiv:2407.21783</a>）。整个系列包含四个模型：两个纯文本模型（1B和3B）和两个视觉模型（11B和90B）。这个组合很有意思——小模型瞄准移动端和设备端，大模型（带视觉）则是桌面级LLaMA 3的延续。</p>
+        <p>2024年9月，Meta发布了LLaMA 3.2，这是LLaMA系列中第一个专门为边缘设备设计的版本（模型定位与参数以 Meta 的 <a href="https://ai.meta.com/blog/llama-3-2-connect-2024-vision-edge-mobile-devices/">LLaMA 3.2 发布博客</a>与官方模型卡为准；需要说明的是，LLaMA 3.2 不在《The Llama 3 Herd of Models》（arXiv:2407.21783）论文正文范围内，本节的小模型尺寸与定位属教学整理）。整个系列包含四个模型：两个纯文本模型（1B和3B）和两个视觉模型（11B和90B）。这个组合很有意思——小模型瞄准移动端和设备端，大模型（带视觉）则是桌面级LLaMA 3的延续。</p>
 
         <table>
             <tr>
@@ -156,7 +156,7 @@
 
         <h2 id="sec-26-3">26.3 LLaMA 3.2 1B/3B 架构特点</h2>
 
-        <p>LLaMA 3.2的小模型和LLaMA 3的8B模型架构上高度一致，核心差异在于深度（层数）和宽度（隐藏层维度）。</p>
+        <p>LLaMA 3.2的小模型和LLaMA 3的8B模型架构上高度一致，核心差异在于深度（层数）和宽度（隐藏层维度）。其中 LLaMA 3 8B 的层数与隐藏维度可对照《The Llama 3 Herd of Models》（<a href="https://arxiv.org/abs/2407.21783">arXiv:2407.21783</a>）；该论文不包含 LLaMA 3.2，因此下表 1B/3B 的具体配置为教学整理，以 Meta 的 LLaMA 3.2 模型卡为准。</p>
 
         <pre><code># LLaMA 3.2 1B vs 3B vs LLaMA 3 8B 架构对比
 
