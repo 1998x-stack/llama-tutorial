@@ -64,7 +64,7 @@
 
         <h2 id="sec-23-1">23.1 HuggingFace Transformers 库与 LLaMA 模型类层级</h2>
 
-        <p>当你运行 <code>AutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.2-8B")</code> 时，HuggingFace Transformers 库在幕后做了大量工作。要理解这个过程，我们首先需要了解LLaMA在Transformers库中的模型类层级。本章涉及的模型配置与权重格式均以 Meta 的 <a href="https://arxiv.org/abs/2407.21783">LLaMA 3 技术报告（arXiv:2407.21783）</a> 为参照。</p>
+        <p>当你运行 <code>AutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.2-8B")</code> 时，HuggingFace Transformers 库在幕后做了大量工作。要理解这个过程，我们首先需要了解LLaMA在Transformers库中的模型类层级。本章涉及的模型配置与权重格式以 HuggingFace 上 Meta 的 <a href="https://huggingface.co/meta-llama/Llama-3.2-1B">LLaMA 3.2 官方模型卡</a>与 Transformers 官方文档为准（具体类名、默认参数与量化格式属实现细节，本节为教学整理）；而各代模型的架构超参数（层数、隐藏维度、注意力头数等）来自对应原始论文，例如 LLaMA 3 见《The Llama 3 Herd of Models》（<a href="https://arxiv.org/abs/2407.21783">arXiv:2407.21783</a>）。</p>
 
         <p>从 Transformers 4.31.0 版本开始，LLaMA有了自己专属的模型类，之前是依赖LLaMA兼容的 <code>LlamaModel</code> 类，后来代码经历了几次重构。当前版本的类层级是这样的：</p>
 
