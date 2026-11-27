@@ -172,6 +172,46 @@
             <figcaption><strong>图 22-1.</strong> 词表大小对 token 化效率的影响（<strong>教学示意，非论文表格</strong>）：英文这类拉丁语系文本在两种词表下 token 数基本相同，而中文在 128K 词表下可减少约一半 token。图中数值取自本节上文示例，用于说明趋势，不对应某一具体句子的精确分词结果。</figcaption>
         </figure>
 
+        <p>把图 22-1 的中文示例抽象成一个比例，就能估算任意长度输入的 token 数：</p>
+
+        <div class="math-equation" role="group" aria-label="中文 token 数估算公式">
+            <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="中文 token 数估算公式，可横向滚动">
+                <math display="block" aria-label="中文 token 数约等于汉字数 C 乘以每汉字 token 比 r；降幅等于 1 减去 128K 词表的 r 除以 32K 词表的 r">
+                    <mrow>
+                        <msub><mtext>tokens</mtext><mtext>zh</mtext></msub>
+                        <mo>≈</mo>
+                        <mi>C</mi><mo>×</mo><mi>r</mi>
+                        <mo>,</mo><mspace width="0.6em"/>
+                        <mtext>降幅</mtext><mo>=</mo>
+                        <mn>1</mn><mo>−</mo>
+                        <mfrac><msub><mi>r</mi><mn>128</mn></msub><msub><mi>r</mi><mn>32</mn></msub></mfrac>
+                    </mrow>
+                </math>
+            </div>
+        </div>
+
+        <div class="widget" role="group" aria-label="中文字数到 token 数的估算器">
+            <label for="zh-chars">拖动滑块设置中文汉字数：<output id="zh-chars-out">11</output> 个</label>
+            <input type="range" id="zh-chars" min="4" max="60" step="1" value="11">
+            <div class="readout" id="zh-readout">…</div>
+            <p>比例 <code>r</code> 锚定图 22-1 的示例：32K 词表取每汉字 ≈1.18 token（11 汉字→13），128K 词表取 ≈0.64 token（11 汉字→7）。这是便于比较的教学估算（已作简化），真实分词结果随所用句子与分词器版本变化。</p>
+        </div>
+        <script>
+        (function () {
+            var slider = document.getElementById('zh-chars');
+            var out = document.getElementById('zh-readout');
+            function render() {
+                var c = Number(slider.value);
+                document.getElementById('zh-chars-out').textContent = String(c);
+                var t32 = Math.round(c * 1.18), t128 = Math.round(c * 0.64);
+                out.textContent = '32K 词表 ≈ ' + t32 + ' tokens　|　128K 词表 ≈ ' + t128
+                    + ' tokens　|　降幅 ≈ ' + ((1 - 0.64 / 1.18) * 100).toFixed(0) + '%';
+            }
+            slider.addEventListener('input', render);
+            render();
+        })();
+        </script>
+
         <p>LLaMA 3的词表扩展不仅仅是"增加token数量"这么简单——它涉及对分词算法的重新设计。具体来说：</p>
 
         <ul>
