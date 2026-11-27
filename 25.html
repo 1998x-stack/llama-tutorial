@@ -348,7 +348,9 @@ curl http://localhost:11434/v1/chat/completions \
             </tr>
         </table>
 
-        <p><code>Q4_K_M</code> 是社区最广泛使用的量化级别——它在模型质量和文件大小之间取得了最好的平衡。LLaMA 3-8B原始bfloat16权重约16GB，Q4_K_M量化为4.5GB，压缩比超过3.5倍，而MMLU分数只下降不到2%。</p>
+        <p><small>说明：上表各量化级别的“每参数位数”与模型文件大小为 GGUF/llama.cpp 的<strong>教学近似</strong>，会随版本与具体实现变化。</small></p>
+
+        <p><code>Q4_K_M</code> 是社区最广泛使用的量化级别——它在模型质量和文件大小之间取得了最好的平衡。LLaMA 3-8B原始bfloat16权重约16GB，Q4_K_M量化为4.5GB，压缩比超过3.5倍；量化带来的质量损失幅度取决于评测口径（此处不给未标注来源的具体百分点）。</p>
 
         <pre><code># llama.cpp 使用示例
 
