@@ -299,6 +299,48 @@ torch.onnx.export(
             <figcaption><strong>图 26-1.</strong> LLaMA 3.2 1B/3B 的权重占用估算：四-bit 量化把 3B 模型从约 6GB 压到约 1.8GB，才能进入手机内存预算。数值为教学估算（已作简化），其中 1B 与 3B 的 4-bit 值取自本节上文，FP16 按参数量 ×2 字节推算；真实占用还会叠加 KV Cache 与运行时开销。</figcaption>
         </figure>
 
+        <p>上面图 26-1 的每根柱子都可以用一个统一公式概括：权重占用只取决于参数量和每个参数占用的位数。把它写出来就是：</p>
+
+        <div class="math-equation" role="group" aria-label="权重占用估算公式">
+            <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="权重占用估算公式，可横向滚动">
+                <math display="block" aria-label="权重占用约等于参数量 N 乘以每个参数的位宽 b，再除以 8 得到字节数">
+                    <mrow>
+                        <msub><mi>M</mi><mtext>weights</mtext></msub>
+                        <mo>≈</mo>
+                        <mfrac>
+                            <mrow><mi>N</mi><mo>×</mo><mi>b</mi></mrow>
+                            <mn>8</mn>
+                        </mfrac>
+                        <mspace width="0.5em"/><mtext>字节</mtext>
+                    </mrow>
+                </math>
+            </div>
+        </div>
+
+        <div class="widget" role="group" aria-label="权重量化占用估算器">
+            <label for="edge-bits">拖动滑块选择权重量化位宽：<output id="edge-bits-out">4</output> bit</label>
+            <input type="range" id="edge-bits" min="2" max="16" step="2" value="4">
+            <div class="readout" id="edge-readout">…</div>
+            <p>估算用 <code>M ≈ N × b ÷ 8</code>：以 LLaMA 3.2 1B（取整为 1×10⁹ 参数）与 3B（取整为 3×10⁹ 参数）为例。该式只算权重本身，忽略词表嵌入、KV Cache、激活与运行时开销；4-bit 结果（0.5 / 1.5 GB）因此低于图 26-1 的 GGUF 实测近似值（0.7 / 1.8 GB），为教学简化（已作简化）。</p>
+        </div>
+        <script>
+        (function () {
+            var slider = document.getElementById('edge-bits');
+            var out = document.getElementById('edge-readout');
+            var sizes = [{name: '1B', n: 1e9}, {name: '3B', n: 3e9}];
+            function render() {
+                var b = Number(slider.value);
+                document.getElementById('edge-bits-out').textContent = String(b);
+                out.textContent = sizes.map(function (s) {
+                    var gb = s.n * b / 8 / 1e9;
+                    return 'LLaMA 3.2 ' + s.name + '：约 ' + gb.toFixed(2) + ' GB';
+                }).join('　|　');
+            }
+            slider.addEventListener('input', render);
+            render();
+        })();
+        </script>
+
         <p>我来分享一个我们团队在量化过程中踩过的坑。最初我们直接用GPTQ做4-bit量化，在PC端测试效果不错，但移植到Android手机上后，发现推理速度比预期慢了很多。排查了半天才发现问题出在反量化操作上——GPTQ的反量化需要在GPU上实时执行，而Android手机的GPU Delegate对某些非标准算子的支持不够完善，导致部分操作回退到了CPU执行。解决方案是改用GGUF格式+llama.cpp，因为GGUF的量化方案在设计之初就考虑了各种硬件平台的兼容性。这个教训告诉大家：<strong>在移动端部署，不要只看量化精度，更要关注量化格式和目标硬件的匹配度。</strong></p>
 
         <h2 id="sec-26-5">26.5 推理速度优化</h2>
