@@ -9,7 +9,7 @@
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>🦙 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 LLaMA系列概述</a></li>
@@ -41,16 +41,28 @@
             <li><a href="27.html">第27章 LLaMA 4展望与MoE架构</a></li>
             <li><a href="28.html" class="active">第28章 开源LLM生态与未来趋势</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
 
-        <h2>第28章 开源LLM生态与未来趋势</h2>
+        <h1>第28章 开源LLM生态与未来趋势</h1>
+
+        <nav class="toc" aria-label="本章小节导航">
+            <strong>本章导航：</strong>
+            <a href="#sec-28-1">28.1 生态全景</a> ·
+            <a href="#sec-28-2">28.2 开源 vs 闭源</a> ·
+            <a href="#sec-28-3">28.3 社区生态</a> ·
+            <a href="#sec-28-4">28.4 关键趋势</a> ·
+            <a href="#sec-28-5">28.5 面临的挑战</a> ·
+            <a href="#sec-28-6">28.6 LLaMA 启示</a> ·
+            <a href="#sec-28-7">28.7 给学习者的建议</a> ·
+            <a href="#sec-28-8">28.8 课程知识图谱</a>
+        </nav>
 
         <p>大家好，欢迎来到这门课程的最后一章。在过去27章中，我们一起走过了LLaMA架构的每一个角落——从RoPE的旋转矩阵到RLHF的奖励建模，从多模态的对齐训练到边缘设备的部署优化。我们写过的代码行数可能超过了一千行，分析的论文超过了十篇，讨论的工程案例横跨了从训练到部署的完整链条。</p>
 
         <p>但LLaMA不是孤立存在的。它是整个开源LLM生态的一部分，是这个波澜壮阔时代的缩影。这一章，我们跳出LLaMA这个具体的技术主题，从更高的视角审视整个开源大模型生态的全貌，梳理2024-2026年的关键趋势，以及最重要的——<strong>作为开发者，我们应该如何在这个飞速变化的领域中持续成长。</strong></p>
 
-        <h3>28.1 后LLaMA时代的开源LLM生态全景</h3>
+        <h2 id="sec-28-1">28.1 后LLaMA时代的开源LLM生态全景</h2>
 
         <p>2023年被很多人称为"大模型元年"，2024年是"应用爆发年"，而2025-2026年则可以被定义为"生态分化年"。经过三年的高速发展，开源LLM生态已经形成了"一超多强"的格局。"一超"是LLaMA家族——基于LLaMA的衍生模型占据了HuggingFace模型下载量的半壁江山。"多强"则是Mistral、Qwen、DeepSeek、Gemma、Falcon等各有特色的开源模型家族。</p>
 
@@ -119,9 +131,9 @@
             <strong>一个有趣的观察：</strong> 从架构角度来说，这些模型"越来越像"了。除了DeepSeek在MoE上有独特的创新，大部分模型的底层架构（RoPE + RMSNorm + SwiGLU + GQA）几乎是一样的。这说明LLaMA在2023年定义的架构范式已经成为了事实上的行业标准。当前的竞争焦点已经从"架构创新"转移到了"数据质量"、"训练规模"和"生态集成"上。这是开源社区成熟化的标志——大家不再各自为战，而是围绕一个共同的技术栈进行优化和竞争。
         </div>
 
-        <h3>28.2 开源 vs 闭源：能力差距的缩小</h3>
+        <h2 id="sec-28-2">28.2 开源 vs 闭源：能力差距的缩小</h2>
 
-        <p>2023年，开源模型和闭源模型之间的差距是"天壤之别"——最强开源模型LLaMA 2 70B在MMLU上只有68.9%，而GPT-4达到了86.4%。到了2024年，LLaMA 3 405B在MMLU上追到了87.8%，首次在单项基准上超过了GPT-4。2025-2026年，多个开源模型在各项基准上已经逼近甚至超过了GPT-4和Claude 3.5的水平。</p>
+        <p>2023年，开源模型和闭源模型之间的差距是"天壤之别"——最强开源模型LLaMA 2 70B在MMLU上只有68.9%，而GPT-4达到了86.4%。到了2024年，LLaMA 3 405B在MMLU上追到了87.8%，首次在单项基准上超过了GPT-4（口径与各代官方模型卡 / <a href="https://arxiv.org/abs/2407.21783">LLaMA 3 Herd of Models，arXiv:2407.21783</a> 为准；不同来源的分数口径略有差异）。2025-2026年，多个开源模型在各项基准上已经逼近甚至超过了GPT-4和Claude 3.5的水平。</p>
 
         <p>那么开源和闭源的差距真的消失了吗？我的看法是：<strong>在"通用能力"层面差距已经很小，但在"专业能力"和"产品体验"层面差距依然明显。</strong>具体来说：</p>
 
@@ -134,13 +146,46 @@
 
         <p>但有一个趋势非常值得关注：<strong>开源模型的"可行替代"场景在快速扩大。</strong>如果你只是想做一个文档摘要工具、客服问答系统、代码补全插件，开源模型已经完全可以胜任，而且成本只有闭源模型的1/10到1/100。这意味着大量"非极致性能"场景正在从闭源切换到开源。</p>
 
-        <h3>28.3 社区生态：HuggingFace与Open LLM Leaderboard</h3>
+        <h2 id="sec-28-3">28.3 社区生态：HuggingFace与Open LLM Leaderboard</h2>
 
         <p>HuggingFace在2024-2026年期间的角色发生了根本性的转变。以前它是一个"模型托管平台"——大家把自己的模型上传上去供他人下载。现在它变成了一个"AI操作系统"——提供训练（AutoTrain）、推理（Inference Endpoints）、数据集（Datasets）、评估（Open LLM Leaderboard）的全链路服务。</p>
 
         <p><strong>Open LLM Leaderboard</strong>的演变特别值得一说。初代Leaderboard（2023年）只有4个基准（MMLU、ARC、HellaSwag、TruthfulQA），而且评分方式很简单——取平均分排名。但这种做法很快就被"刷榜"现象污染了：很多人专门针对这4个基准来优化模型，导致排名失去了区分度。</p>
 
         <p>2024年，HuggingFace推出了Open LLM Leaderboard v2，加入了GSM8K（数学推理）、MATH（高难度数学）和BBH（大语言模型评估基准），并且使用了标准化评估框架（LM Evaluation Harness）。v3版本在2025年进一步扩展，加入了代码生成（HumanEval+）、长上下文评估（RULER）、指令跟随（IFEval）和安全性评估（Safety Benchmark）。每一次迭代都反映了社区对"什么是好的大模型"的认知进化。</p>
+
+        <figure>
+            <svg viewBox="0 0 720 300" role="img" aria-labelledby="fig-leaderboard-title" xmlns="http://www.w3.org/2000/svg">
+                <title id="fig-leaderboard-title">Open LLM Leaderboard 评测集的三次迭代</title>
+                <desc>v1（2023）包含 MMLU、ARC、HellaSwag、TruthfulQA 四个基准，取简单平均分排名；v2（2024）加入 GSM8K、MATH、BBH 并使用 LM Evaluation Harness 标准化评测；v3（2025）扩展 HumanEval+、RULER、IFEval 与 Safety Benchmark。</desc>
+                <defs>
+                    <marker id="fig-lb-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/></marker>
+                </defs>
+                <rect x="15" y="50" width="210" height="190" rx="12" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2"/>
+                <text x="120" y="78" font-size="15" text-anchor="middle" fill="#4c1d95">v1 · 2023</text>
+                <text x="120" y="106" font-size="12" text-anchor="middle" fill="#5b21b6">MMLU · ARC</text>
+                <text x="120" y="128" font-size="12" text-anchor="middle" fill="#5b21b6">HellaSwag · TruthfulQA</text>
+                <text x="120" y="162" font-size="12" text-anchor="middle" fill="#5b21b6">仅 4 个基准</text>
+                <text x="120" y="186" font-size="12" text-anchor="middle" fill="#5b21b6">简单平均分排名</text>
+                <text x="120" y="216" font-size="11" text-anchor="middle" fill="#9d174d">易被刷榜污染</text>
+                <rect x="255" y="50" width="210" height="190" rx="12" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+                <text x="360" y="78" font-size="15" text-anchor="middle" fill="#92400e">v2 · 2024</text>
+                <text x="360" y="106" font-size="12" text-anchor="middle" fill="#92400e">新增 GSM8K · MATH · BBH</text>
+                <text x="360" y="128" font-size="12" text-anchor="middle" fill="#92400e">补上数学与推理</text>
+                <text x="360" y="162" font-size="12" text-anchor="middle" fill="#92400e">LM Evaluation Harness</text>
+                <text x="360" y="186" font-size="12" text-anchor="middle" fill="#92400e">标准化评测流程</text>
+                <rect x="495" y="50" width="210" height="190" rx="12" fill="#d1fae5" stroke="#0d9488" stroke-width="2"/>
+                <text x="600" y="78" font-size="15" text-anchor="middle" fill="#0f766e">v3 · 2025</text>
+                <text x="600" y="106" font-size="12" text-anchor="middle" fill="#0f766e">HumanEval+ · RULER</text>
+                <text x="600" y="128" font-size="12" text-anchor="middle" fill="#0f766e">IFEval · Safety</text>
+                <text x="600" y="162" font-size="12" text-anchor="middle" fill="#0f766e">代码 / 长上下文</text>
+                <text x="600" y="186" font-size="12" text-anchor="middle" fill="#0f766e">指令跟随 / 安全性</text>
+                <line x1="225" y1="145" x2="253" y2="145" stroke="#94a3b8" stroke-width="2" marker-end="url(#fig-lb-arrow)"/>
+                <line x1="465" y1="145" x2="493" y2="145" stroke="#94a3b8" stroke-width="2" marker-end="url(#fig-lb-arrow)"/>
+                <text x="360" y="272" font-size="12" text-anchor="middle" fill="#64748b">每一次迭代都在扩大评测覆盖面，并试图抵御针对单一基准的刷榜行为</text>
+            </svg>
+            <figcaption><strong>图 28-1.</strong> Open LLM Leaderboard 评测集的三次迭代：从 v1 的 4 个基准，到 v2 补上数学与推理并引入 LM Evaluation Harness，再到 v3 覆盖代码、长上下文、指令跟随与安全性。图中基准名称来自本节正文对三次版本迭代的描述。</figcaption>
+        </figure>
 
         <pre><code># 使用lm-eval-harness评估模型的标准化流程
 
@@ -166,7 +211,7 @@ lm_eval --model hf \
             <strong>给模型评估初学者的建议：</strong> 不要只看Leaderboard排名。一个模型在Leaderboard上的高分，可能是因为它在训练数据中见过大量类似题目（数据泄露），也可能是因为它针对这些基准做了专门的优化。真正衡量模型能力的最好方法，还是在你自己的业务场景和评估集上做测试。<strong>自己的场景才是最好的benchmark。</strong>我在多个项目中验证过：Leaderboard排名前3的模型在特定领域任务上的表现，可能还不如一个经过领域微调的小模型。
         </div>
 
-        <h3>28.4 2025-2026年关键趋势</h3>
+        <h2 id="sec-28-4">28.4 2025-2026年关键趋势</h2>
 
         <p>站在2026年中回顾过去两年，我看到了几个深刻改变行业的技术趋势。它们不是独立发展的，而是彼此交织、相互促进。</p>
 
@@ -184,7 +229,7 @@ lm_eval --model hf \
             <strong>一个让我反思的踩坑经历：</strong> 2024年上半年，我花了两周时间自研了一个KV Cache压缩算法，成就感满满。结果一周后发现vLLM已经在最新版中实现了几乎一样的算法，而且性能更好、稳定性更高。这个教训让我学会了：<strong>在开源生态高度活跃的今天，"造轮子之前先看有没有现成的"是一个极其重要的原则。</strong>除非你的场景有极端特殊的需求，否则使用社区成熟方案总是更快、更稳妥的选择。从那以后，我养成了一个习惯：接到任何"优化"需求时，先花一天时间调研社区已有的方案，再决定是否自研。
         </div>
 
-        <h3>28.5 开源LLM面临的挑战</h3>
+        <h2 id="sec-28-5">28.5 开源LLM面临的挑战</h2>
 
         <p>在充满信心的同时，我也必须诚实地讨论开源LLM面临的几个重大挑战。这些问题如果不解决，开源模型的未来可能会遇到瓶颈。</p>
 
@@ -198,7 +243,7 @@ lm_eval --model hf \
             <strong>一个令人深思的对比：</strong> 2022年，训练一个20B参数级别的模型（如GPT-NeoX-20B）需要约200万美元的算力。2026年，训练一个200B参数级别的MoE模型可能需要超过5000万美元。但作为对比，200万美元在2022年的购买力可能比5000万美元在2026年更"稀有"——因为GPU算力的供给在这四年间增长了超过20倍（全球H100出货量从0到超过400万张）。这告诉我们：虽然绝对成本在上升，但AI的"单位算力成本"实际上在大幅下降。对创业者和研究者来说，关键在于找到"用最少算力产生最大价值"的切入点——而不是和巨头拼训练规模。
         </div>
 
-        <h3>28.6 LLaMA启示：开源AI民主化的意义</h3>
+        <h2 id="sec-28-6">28.6 LLaMA启示：开源AI民主化的意义</h2>
 
         <p>站在课程的最后，我想花一点时间反思LLaMA系列对整个AI生态的意义。</p>
 
@@ -225,7 +270,7 @@ lessons = [
 for lesson in lessons:
     print(lesson)</code></pre>
 
-        <h3>28.7 给学习者的建议</h3>
+        <h2 id="sec-28-7">28.7 给学习者的建议</h2>
 
         <p>我知道不少读者看完这28章后可能会有一个共同的困惑："这个领域变化这么快，我刚学会的东西会不会明天就过时了？"这是一个非常真实的问题。让我分享几条我认为能帮助你在LLM领域持续成长的建议。</p>
 
@@ -246,7 +291,7 @@ for lesson in lessons:
             - 新闻聚合：The Gradient / Import AI（每周AI简讯）
         </div>
 
-        <h3>28.8 课程总结：28章的知识图谱</h3>
+        <h2 id="sec-28-8">28.8 课程总结：28章的知识图谱</h2>
 
         <p>在这门课程的最后，让我带你把28章的内容串成一个完整的知识体系。你可以把它当作一张"学习地图"，随时回来查阅和复习。</p>
 
@@ -308,7 +353,7 @@ for lesson in lessons:
             <a href="javascript:void(0)">回到首页</a>
         </div>
 
-    </div>
+    </main>
 </div>
 </div>
 </body>
