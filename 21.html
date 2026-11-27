@@ -249,6 +249,37 @@ model_output = """
             <figcaption><strong>图 21-1.</strong> Function Calling 的请求-执行-回填循环：模型输出的不再是自然语言，而是可被程序解析的工具调用 JSON；应用层执行后把结果当作新消息回填，模型据此再次决策。循环在产品层面通常设置轮次上限，本章 21.6 节的 Agent 系统在此基础上叠加多步规划。</figcaption>
         </figure>
 
+        <div class="widget" role="group" aria-label="工具调用决策演示">
+            <label for="fc-query">选择一条用户请求，看模型会选哪个工具、输出什么 JSON：</label>
+            <select id="fc-query" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid #c7d2fe;background:#fff;font-size:0.92rem;color:#3730a3;">
+                <option value="search_web" selected>帮我查一下 2024 年诺贝尔物理学奖得主是谁</option>
+                <option value="calculate">计算 sqrt(12.5 × 8)，保留 3 位小数</option>
+                <option value="get_weather">明天北京天气怎么样？</option>
+                <option value="none">把这段话翻译成法语</option>
+            </select>
+            <div class="readout" id="fc-readout" style="white-space:pre-wrap;">…</div>
+            <p>演示内置了 21.3 节 <code>system_message</code> 中的三个工具（<code>search_web</code> / <code>calculate</code> / <code>get_weather</code>）。真实场景下模型根据工具描述自主判断，这里用固定映射展示“意图→结构化动作”的形态，为教学示例。</p>
+        </div>
+        <script>
+        (function () {
+            var sel = document.getElementById('fc-query');
+            var out = document.getElementById('fc-readout');
+            var table = {
+                search_web: { fn: 'search_web', params: { query: '2024 Nobel Prize Physics winners', max_results: 5 } },
+                calculate: { fn: 'calculate', params: { expression: 'sqrt(12.5*8)', precision: 3 } },
+                get_weather: { fn: 'get_weather', params: { city: '北京', date: '明天' } },
+                none: null
+            };
+            function render() {
+                var r = table[sel.value];
+                if (!r) { out.textContent = '无需调用工具：模型直接生成文本回答（例如翻译结果），不产生函数调用 JSON。'; return; }
+                out.textContent = '调用工具：' + r.fn + '\n输出 JSON：{"function": "' + r.fn + '", "params": ' + JSON.stringify(r.params) + '}';
+            }
+            sel.addEventListener('change', render);
+            render();
+        })();
+        </script>
+
         <div class="highlight">
             <strong>关键洞察：</strong> Function Calling的本质是一种<strong>结构化生成</strong>。它不是让模型写自然语言，而是让模型生成机读的、严格遵循schema的JSON。LLaMA 3在SFT阶段被训练了大量"用户请求→函数调用"的转换数据，使得这种"意图到动作"的映射变得非常流畅。这一点对Agent系统特别重要——因为Agent系统的核心就是把用户的自然语言意图转化为一系列可控、可验证的API调用。
         </div>
