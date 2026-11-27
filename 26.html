@@ -430,7 +430,7 @@ class QuantizedKVCache:
                 <td>GSM8K (8-shot, CoT)</td>
                 <td>34.5%</td>
                 <td>52.8%</td>
-                <td>76.9%</td>
+                <td>84.5%</td>
             </tr>
             <tr>
                 <td>HellaSwag (10-shot)</td>
@@ -446,7 +446,7 @@ class QuantizedKVCache:
             </tr>
         </table>
 
-        <p><small>说明：上表中 LLaMA 3 8B 参考列的 MMLU 66.7%（5-shot）与 GSM8K 76.9%（8-shot CoT）取自 LLaMA 3 技术报告的公开结果；LLaMA 3.2 1B/3B 两列数值为<strong>教学示意</strong>，用于展示小模型在知识题与推理题上的相对差距，请以 LLaMA 3.2 官方评估为准。</small></p>
+        <p><small>说明：上表中 LLaMA 3 8B 参考列的 MMLU 66.7%（5-shot）与 GSM8K 84.5%（8-shot CoT）取自 LLaMA 3 技术报告主结果表（arXiv:2407.21783）；LLaMA 3.2 1B/3B 两列数值为<strong>教学示意</strong>，用于展示小模型在知识题与推理题上的相对差距，请以 LLaMA 3.2 官方评估为准。</small></p>
 
         <p>从数据可以看出，1B和3B的精度差距在MMLU这种知识密集型任务上约为10个百分点，而在GSM8K（数学推理）上差距高达18个百分点。这说明<strong>模型的推理能力对参数量的依赖比常识知识更大</strong>。如果你的应用场景主要是简单的文本理解和生成，1B模型加上良好的prompt设计完全够用。但如果需要多步推理或数学计算，3B甚至8B可能是更好的选择。</p>
 
