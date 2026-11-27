@@ -238,8 +238,8 @@ y = γ · x_norm                      # 可学习的缩放参数（无β偏移�
         <div class="widget" role="group" aria-label="LayerNorm 与 RMSNorm 输出对比">
             <label for="rms-v1">调整输入向量 x 的三个分量（范围 −3 到 3，γ=1）：</label>
             <input type="range" id="rms-v1" min="-3" max="3" step="0.1" value="1.2">
-            <input type="range" id="rms-v2" min="-3" max="3" step="0.1" value="0.4">
-            <input type="range" id="rms-v3" min="-3" max="3" step="0.1" value="2.1">
+            <input type="range" id="rms-v2" aria-label="输入向量 x 的第二个分量" min="-3" max="3" step="0.1" value="0.4">
+            <input type="range" id="rms-v3" aria-label="输入向量 x 的第三个分量" min="-3" max="3" step="0.1" value="2.1">
             <div class="readout" id="rms-out">…</div>
             <p>LayerNorm 减去均值后再缩放，输出均值恒为 0；RMSNorm 只除以均方根，输出均值一般不为 0、但能保留向量原有的方向与偏移。注意 RMSNorm 因为不减均值，对整体平移 x → x + c 是<strong>不敏感</strong>的，而 LayerNorm 会把两者归一化到几乎相同的结果。</p>
         </div>

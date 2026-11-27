@@ -221,7 +221,7 @@ class MoELayer(nn.Module):
         <div class="widget" role="group" aria-label="MoE 激活稀疏度演示">
             <label for="moe-n">专家总数 N：<output id="moe-n-out">8</output>　·　每 token 激活专家数 k：<output id="moe-k-out">2</output></label>
             <input type="range" id="moe-n" min="4" max="64" step="1" value="8">
-            <input type="range" id="moe-k" min="1" max="4" step="1" value="2">
+            <input type="range" id="moe-k" aria-label="每 token 激活的专家数 k" min="1" max="4" step="1" value="2">
             <div class="readout" id="moe-out">…</div>
             <p>若每个专家都是与稠密 FFN 同规模的子网，则 MoE 的 FFN <strong>总参数</strong>约为稠密 FFN 的 N 倍，而每个 token 实际参与的专家只占 k/N。这就是MoE的“大参数、小计算”特性（未计入路由网络的微小开销，为教学示意）。</p>
         </div>
