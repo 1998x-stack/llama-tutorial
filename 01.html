@@ -173,6 +173,35 @@
             <figcaption><strong>图 1-1.</strong> LLaMA 家族四代演进时间线。虚线箭头强调两条并行趋势：参数规模从 7B 扩张到 405B 稠密模型，训练数据从 1T 增长到 15.6T tokens。表中数字来自 LLaMA 1/2/3 论文与各代官方模型卡；LLaMA 3.2 未公开预训练 token 数，故只标注其上下文长度与部署定位。</figcaption>
         </figure>
 
+        <div class="widget" role="group" aria-label="LLaMA 各代规模速查">
+            <label for="family-gen">选择一代模型，查看它的规模与关键特性：</label>
+            <select id="family-gen" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid #c7d2fe;background:#fff;font-size:0.92rem;color:#3730a3;">
+                <option value="0" selected>LLaMA 1（2023.02）</option>
+                <option value="1">LLaMA 2（2023.07）</option>
+                <option value="2">LLaMA 3（2024.04）</option>
+                <option value="3">LLaMA 3.2（2024.09）</option>
+            </select>
+            <div class="readout" id="family-readout">…</div>
+            <p>数据与本页 1.2 节表格一致，取自各代官方模型卡与论文；LLaMA 3.2 未公开预训练 token 数。</p>
+        </div>
+        <script>
+        (function () {
+            var sel = document.getElementById('family-gen');
+            var out = document.getElementById('family-readout');
+            var rows = [
+                ['参数量 7B/13B/33B/65B', '上下文 2K', '训练数据 1.0T tokens', 'RoPE / RMSNorm / SwiGLU'],
+                ['参数量 7B/13B/70B', '上下文 4K', '训练数据 2.0T tokens', 'GQA / RLHF / 商用许可'],
+                ['参数量 8B/70B/405B', '上下文 8K→128K', '训练数据 15.6T tokens', '405B 稠密 / 多模态'],
+                ['参数量 1B/3B/11B/90B', '上下文 128K', '预训练 token 数未公开', '边缘部署 / 小模型']
+            ];
+            function render() {
+                out.textContent = rows[Number(sel.value)].join('　|　');
+            }
+            sel.addEventListener('change', render);
+            render();
+        })();
+        </script>
+
         <p>细心的读者可能已经注意到了几个有意思的模式。首先，参数量级在LLaMA 3达到了405B——这个数字放在GPT-4的时代已经不算最大，但它是当时<strong>最大的稠密（dense）开源模型</strong>。相比之下，GPT-4据传有1.7T参数且采用了MoE架构，Mixtral 8x7B也是MoE。Meta坚持用稠密架构的原因很值得玩味，我们在第19章会详细分析。其次，训练数据的规模从1T增长到15.6T tokens——增长了15倍，而缩放定律告诉我们，这不仅仅是"更多数据"那么简单，数据质量和分布直接决定了模型的推理能力和泛化边界。</p>
 
         <h2 id="sec-1-3">1.3 三篇里程碑论文</h2>
