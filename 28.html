@@ -187,6 +187,40 @@
             <figcaption><strong>图 28-1.</strong> Open LLM Leaderboard 评测集的三次迭代：从 v1 的 4 个基准，到 v2 补上数学与推理并引入 LM Evaluation Harness，再到 v3 覆盖代码、长上下文、指令跟随与安全性。图中基准名称来自本节正文对三次版本迭代的描述。</figcaption>
         </figure>
 
+        <div class="widget" role="group" aria-label="能力维度到评测基准的对照">
+            <label for="lb-cap">选择一种能力维度，看它是哪个版本引入的：</label>
+            <select id="lb-cap" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid #c7d2fe;background:#fff;font-size:0.92rem;color:#3730a3;">
+                <option value="0" selected>综合知识</option>
+                <option value="1">数学推理</option>
+                <option value="2">代码生成</option>
+                <option value="3">长上下文</option>
+                <option value="4">指令跟随</option>
+                <option value="5">安全性</option>
+            </select>
+            <div class="readout" id="lb-readout">…</div>
+            <p>对照关系与图 28-1 及本节正文一致：v1 仅有综合知识类基准，v2 补上数学与推理并改用 LM Evaluation Harness，v3 再扩展代码、长上下文、指令跟随与安全性。</p>
+        </div>
+        <script>
+        (function () {
+            var sel = document.getElementById('lb-cap');
+            var out = document.getElementById('lb-readout');
+            var rows = [
+                ['v1 起覆盖（2023）', 'MMLU、ARC、HellaSwag、TruthfulQA', '仅 4 个基准，取简单平均分排名'],
+                ['v2 起覆盖（2024）', 'GSM8K、MATH', '引入 LM Evaluation Harness 标准化评测'],
+                ['v3 起覆盖（2025）', 'HumanEval+', '在 v2 基础上扩展到代码生成'],
+                ['v3 起覆盖（2025）', 'RULER', '长上下文能力评估'],
+                ['v3 起覆盖（2025）', 'IFEval', '指令跟随能力评估'],
+                ['v3 起覆盖（2025）', 'Safety Benchmark', '安全性评估']
+            ];
+            function render() {
+                var r = rows[Number(sel.value)];
+                out.textContent = r[0] + '：' + r[1] + '（' + r[2] + '）';
+            }
+            sel.addEventListener('change', render);
+            render();
+        })();
+        </script>
+
         <pre><code># 使用lm-eval-harness评估模型的标准化流程
 
 # 安装评估框架
