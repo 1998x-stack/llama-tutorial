@@ -147,6 +147,50 @@
 
         <h2 id="sec-23-3">23.3 模型加载的完整流程</h2>
 
+        <p>在进入加载流程之前，先用 config.json 的数字算一笔账：加载模型时占用的显存下界，就是参数量乘以所选精度的字节数。这个关系可以写成：</p>
+
+        <div class="math-equation" role="group" aria-label="模型加载显存估算公式">
+            <div class="math-scroll" data-math-scroll tabindex="0" role="region" aria-label="模型加载显存估算公式，可横向滚动">
+                <math display="block" aria-label="加载所需显存约等于参数量 N 乘以每个参数占用的字节数 s">
+                    <mrow>
+                        <msub><mi>M</mi><mtext>load</mtext></msub>
+                        <mo>≈</mo>
+                        <mi>N</mi><mo>×</mo><mi>s</mi>
+                        <mo>,</mo><mspace width="0.5em"/>
+                        <mi>s</mi><mo>=</mo>
+                        <mfrac><mtext>位宽</mtext><mn>8</mn></mfrac>
+                    </mrow>
+                </math>
+            </div>
+        </div>
+
+        <div class="widget" role="group" aria-label="不同精度下的加载显存估算器">
+            <label for="hf-dtype">选择 <code>torch_dtype</code>（加载精度）：</label>
+            <select id="hf-dtype" style="width:100%;padding:8px 10px;border-radius:10px;border:1px solid #c7d2fe;background:#fff;font-size:0.92rem;color:#3730a3;">
+                <option value="4">float32（4 字节/参数）</option>
+                <option value="2" selected>bfloat16 / float16（2 字节/参数）</option>
+                <option value="1">8-bit 量化（1 字节/参数）</option>
+                <option value="0.5">4-bit 量化（0.5 字节/参数）</option>
+            </select>
+            <div class="readout" id="hf-readout">…</div>
+            <p>估算仅含权重本身（<code>M ≈ N × s</code>），未计入 KV Cache、激活值与运行时开销，故为下界。参数量取整：LLaMA 3 8B ≈ 8×10⁹、70B ≈ 70×10⁹；bfloat16 结果与官方模型卡中“8B 需 ~16GB”的量级一致。数值为教学估算（已作简化）。</p>
+        </div>
+        <script>
+        (function () {
+            var sel = document.getElementById('hf-dtype');
+            var out = document.getElementById('hf-readout');
+            var sizes = [{name: 'LLaMA 3 8B', n: 8e9}, {name: 'LLaMA 3 70B', n: 70e9}];
+            function render() {
+                var s = Number(sel.value);
+                out.textContent = sizes.map(function (m) {
+                    return m.name + '：约 ' + (m.n * s / 1e9).toFixed(0) + ' GB';
+                }).join('　|　');
+            }
+            sel.addEventListener('change', render);
+            render();
+        })();
+        </script>
+
         <p>当我们调用 <code>from_pretrained</code> 时，幕后实际上经历了好几个阶段。了解这些阶段可以帮助你诊断加载过程中遇到的各类问题。</p>
 
         <figure>
