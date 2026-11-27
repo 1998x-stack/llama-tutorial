@@ -470,6 +470,8 @@ model = AutoModelForCausalLM.from_pretrained(
             </tr>
         </table>
 
+        <p><small>说明：上表的版本要求整理自 HuggingFace Transformers 的发布记录（各版本新增 / 修复的 LLaMA 支持）；具体最低版本可能随后续补丁版本变化，实际以对应版本的 release notes 为准。</small></p>
+
         <div class="warning">
             <strong>踩坑故事：</strong> 最惨的一次经历发生在LLaMA 3.1发布当天。我们迫不及待地用 <code>from_pretrained("meta-llama/Llama-3.1-8B")</code> 加载，结果报错说找不到 <code>LlamaForCausalLM</code> 的某个属性。查了半天发现，LLaMA 3.1引入了一个新的特殊token <code>&lt;|finetune_right_pad_id|&gt;</code>，旧版Transformers不认识这个token配置。升级到4.42.0后问题解决。教训是：<strong>每次Meta发布新模型，先升级Transformers到最新版</strong>，不然大概率踩坑。
         </div>
