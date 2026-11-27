@@ -285,7 +285,7 @@
             </tr>
             <tr>
                 <td>MMLU</td>
-                <td>44.3</td>
+                <td>45.3</td>
                 <td>~44.0</td>
                 <td>基本不变</td>
             </tr>
@@ -296,6 +296,8 @@
                 <td>略有下降</td>
             </tr>
         </table>
+
+        <p><small>说明：上表 Base 列的 MMLU 45.3 取自 LLaMA 2 论文表 3（基座 7B）；其余各维度以定性描述为主，Chat 列与 HumanEval 的数值为<strong>教学示意</strong>，用于说明“SFT 主要改变行为风格而非知识储备”。</small></p>
 
         <p>这个对比揭示了一个重要现象：<strong>SFT主要改变了模型的"行为风格"而非"知识储备"。</strong>MMLU分数（衡量知识面）在SFT前后几乎没有变化。HumanEval（代码生成）甚至出现了轻微下降——可能是因为SFT数据中代码样本的格式与预训练数据不同导致的。</p>
 

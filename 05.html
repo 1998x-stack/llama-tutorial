@@ -428,6 +428,8 @@ def fused_swiglu(x, gate_weight, up_weight, down_weight):
             </tr>
         </table>
 
+        <p><small>说明：上表的 hidden_dim / intermediate_dim 整理自 LLaMA 1/2/3 公开发布的模型配置（对应各代技术报告中的超参表）；d_ff/d 与“标准 FFN 等效 d_ff”为由此推导的教学估算。</small></p>
+
         <p>注意到一个关键变化：LLaMA 1到LLaMA 2的d_ff/d比例保持一致（约2.69倍），但LLaMA 3将这个比例提高到了3.25-3.50。这意味着LLaMA 3的SwiGLU FFN相对于标准FFN的等效参数量更大——从原来的8d²增加到了约(8/3 × 3.5 / 4) × 8d² = 9.33d²。这个变化反映了Meta在更大规模和更多数据下的实验结论：<strong>SwiGLU的门控机制在参数量更充裕的情况下效果更好</strong>。</p>
 
         <p>另一个值得注意的细节是，LLaMA 3中不同规模模型的d_ff/d比例不同——8B/70B是3.5，405B是3.25。这可能是因为405B的hidden_dim已经是16384，对应的standard d_ff已经很大（65536），稍微减少比例可以控制总参数量不过度膨胀。</p>
@@ -477,6 +479,8 @@ def fused_swiglu(x, gate_weight, up_weight, down_weight):
                 <td>快</td>
             </tr>
         </table>
+
+        <p><small>说明：上表中各激活函数的 PPL “相对提升”为<strong>教学示意</strong>（论文与主流实现的评测设置各异），仅用于表达“SwiGLU / GeGLU 优于 ReLU / GELU”这一方向性结论。</small></p>
 
         <p>这些差距在标准化benchmark上可能看起来不大，但在数十亿参数、数万亿token的训练结束后，累积的差距就是"好模型"和"顶尖模型"之间的分界线。这也解释了为什么LLaMA和几乎所有后续开源模型都选择了SwiGLU作为FFN的标配。</p>
 
