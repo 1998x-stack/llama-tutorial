@@ -9,7 +9,7 @@
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>🦙 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 LLaMA系列概述</a></li>
@@ -41,18 +41,28 @@
             <li><a href="27.html">第27章 LLaMA 4展望与MoE架构</a></li>
             <li><a href="28.html">第28章 开源LLM生态与未来趋势</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
 
-        <h2>第21章 工具调用与代码能力</h2>
+        <h1>第21章 工具调用与代码能力</h1>
+
+        <nav class="toc" aria-label="本章小节导航">
+            <strong>本章导航：</strong>
+            <a href="#sec-21-1">21.1 代码数据配比</a> ·
+            <a href="#sec-21-2">21.2 代码生成与格式控制</a> ·
+            <a href="#sec-21-3">21.3 Function Calling</a> ·
+            <a href="#sec-21-4">21.4 代码执行与沙箱</a> ·
+            <a href="#sec-21-5">21.5 工具调用对比</a> ·
+            <a href="#sec-21-6">21.6 Agent系统集成</a>
+        </nav>
 
         <p>同学们好，欢迎来到第21章。这一章我们会着重讨论LLaMA 3的两个核心能力——<strong>工具调用（Tool Use）</strong>和<strong>代码能力</strong>。你可能觉得这是两个不同的主题，但它们在LLaMA的设计中被高度关联：调用工具需要生成结构化的函数调用，而代码生成本质上是另一种形式的"结构化输出"。理解了这个连接，你就理解了LLaMA 3在"让语言模型做有用的事"这个方向上的整体设计思路。</p>
 
         <p>先讲一个真实的场景。2024年中，我带团队开发一个基于LLM的智能客服系统。我们希望模型能做到的不只是"聊天"——它要能查询订单状态、创建售后工单、计算退款金额……这些操作都需要调用后端API。一开始我们尝试用纯文本prompt来驱动模型调用工具，结果模型经常"幻觉"出不存在API参数、或者参数的格式搞错。后来我们切换到LLaMA 3的Function Calling格式，通过结构化输出来约束函数的调用方式，问题一下子就改善了。这个经历让我切身体会到：<strong>让LLM说"人话"很重要，但让它说"机器话"同样重要。</strong></p>
 
-        <h3>21.1 LLaMA 3的代码数据配比</h3>
+        <h2 id="sec-21-1">21.1 LLaMA 3的代码数据配比</h2>
 
-        <p>要理解LLaMA 3的代码能力，首先要看它的训练数据构成。LLaMA 3的15.6T预训练数据中，代码占了大约17%——也就是大约2.65T tokens来自代码。这个比例在LLM中属于较高水平（GPT-3的代码占比约4%，LLaMA 2约8%）。Meta为什么要投入这么大的比例给代码？答案藏在缩放定律中——代码数据不仅仅是教会模型"写程序"，它在逻辑推理、结构化理解和错误检测等方面都对模型能力有显著的正面影响。</p>
+        <p>要理解LLaMA 3的代码能力，首先要看它的训练数据构成。LLaMA 3的15.6T预训练数据中，代码占了大约17%——也就是大约2.65T tokens来自代码（数据取自 Meta 的 <a href="https://arxiv.org/abs/2407.21783">LLaMA 3 技术报告 arXiv:2407.21783</a>）。这个比例在LLM中属于较高水平（GPT-3的代码占比约4%，LLaMA 2约8%）。Meta为什么要投入这么大的比例给代码？答案藏在缩放定律中——代码数据不仅仅是教会模型"写程序"，它在逻辑推理、结构化理解和错误检测等方面都对模型能力有显著的正面影响。</p>
 
         <p>代码数据的来源包括：</p>
 
@@ -120,7 +130,7 @@
             <strong>有意思的发现：</strong> 代码训练数据的质量和配比对模型能力的影响远远超过了数量。Meta发现，如果只是简单地增加代码数据量而不做质量过滤，反而会降低模型在其他任务上的表现。原因是低质量的代码（如过时的API用法、错误的示例代码、不规范的编码风格）会"污染"模型的语言输出。所以，代码数据的<strong>去重、质量过滤和许可证审查</strong>是必不可少的预处理步骤。
         </div>
 
-        <h3>21.2 代码生成与格式控制</h3>
+        <h2 id="sec-21-2">21.2 代码生成与格式控制</h2>
 
         <p>LLaMA 3在代码生成方面有几个独特的设计：</p>
 
@@ -162,7 +172,7 @@ def merge_intervals(intervals: list[tuple[int, int]]) -> list[tuple[int, int]]:
 
     return merged</code></pre>
 
-        <h3>21.3 Function Calling：让LLM成为"API调度员"</h3>
+        <h2 id="sec-21-3">21.3 Function Calling：让LLM成为"API调度员"</h2>
 
         <p>LLaMA 3的另一个重量级能力是Function Calling（工具调用）。这个概念最早由OpenAI在GPT-4中引入，现在已经成为了LLM领域的事实标准。简单来说，Function Calling就是让LLM在对话过程中识别出"用户需要调用外部工具/API"的场景，并以结构化的格式输出函数调用的参数，由应用层负责执行实际调用。</p>
 
@@ -208,11 +218,42 @@ model_output = """
 
         <p>这个格式的核心优势在于它的<strong>确定性</strong>。相比纯文本prompt方式（"请你帮我查一下……"），Function Calling使用JSON Schema来精确描述函数的输入约束，使得模型生成的参数几乎总是符合预期的格式。在后台，开发者只需要解析模型输出的JSON字符串，提取函数名和参数，然后调用相应的API即可。</p>
 
+        <figure>
+            <svg viewBox="0 0 760 300" role="img" aria-labelledby="fig-fc-title" xmlns="http://www.w3.org/2000/svg">
+                <title id="fig-fc-title">Function Calling 的请求-执行-回填循环</title>
+                <desc>用户请求进入模型，模型输出结构化的工具调用 JSON；应用层解析并执行外部 API；执行结果作为新消息回填给模型；模型再次决策，直至无需调用工具时输出最终文本回答。</desc>
+                <defs>
+                    <marker id="fig-fc-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#7c3aed"/></marker>
+                    <marker id="fig-fc-arrow2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0d9488"/></marker>
+                </defs>
+                <rect x="20" y="70" width="150" height="80" rx="10" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2"/>
+                <text x="95" y="103" font-size="14" text-anchor="middle" fill="#4c1d95">用户请求</text>
+                <text x="95" y="126" font-size="12" text-anchor="middle" fill="#5b21b6">自然语言指令</text>
+                <rect x="205" y="70" width="150" height="80" rx="10" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+                <text x="280" y="103" font-size="14" text-anchor="middle" fill="#92400e">模型决策</text>
+                <text x="280" y="126" font-size="12" text-anchor="middle" fill="#92400e">输出工具调用 JSON</text>
+                <rect x="390" y="70" width="150" height="80" rx="10" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2"/>
+                <text x="465" y="103" font-size="14" text-anchor="middle" fill="#075985">应用层</text>
+                <text x="465" y="126" font-size="12" text-anchor="middle" fill="#075985">解析并执行 API</text>
+                <rect x="575" y="70" width="150" height="80" rx="10" fill="#d1fae5" stroke="#0d9488" stroke-width="2"/>
+                <text x="650" y="103" font-size="14" text-anchor="middle" fill="#0f766e">结果回填</text>
+                <text x="650" y="126" font-size="12" text-anchor="middle" fill="#0f766e">作为新消息</text>
+                <line x1="170" y1="110" x2="203" y2="110" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-fc-arrow)"/>
+                <line x1="355" y1="110" x2="388" y2="110" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-fc-arrow)"/>
+                <line x1="540" y1="110" x2="573" y2="110" stroke="#7c3aed" stroke-width="2" marker-end="url(#fig-fc-arrow)"/>
+                <path d="M650,150 L650,220 L280,220 L280,154" fill="none" stroke="#0d9488" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#fig-fc-arrow2)"/>
+                <text x="465" y="244" font-size="12" text-anchor="middle" fill="#0f766e">若仍需工具则再次进入模型决策</text>
+                <text x="650" y="278" font-size="12" text-anchor="middle" fill="#64748b">无需工具 → 输出最终文本回答</text>
+                <line x1="650" y1="150" x2="650" y2="260" stroke="#64748b" stroke-width="1.5" marker-end="url(#fig-fc-arrow2)" opacity="0.5"/>
+            </svg>
+            <figcaption><strong>图 21-1.</strong> Function Calling 的请求-执行-回填循环：模型输出的不再是自然语言，而是可被程序解析的工具调用 JSON；应用层执行后把结果当作新消息回填，模型据此再次决策。循环在产品层面通常设置轮次上限，本章 21.6 节的 Agent 系统在此基础上叠加多步规划。</figcaption>
+        </figure>
+
         <div class="highlight">
             <strong>关键洞察：</strong> Function Calling的本质是一种<strong>结构化生成</strong>。它不是让模型写自然语言，而是让模型生成机读的、严格遵循schema的JSON。LLaMA 3在SFT阶段被训练了大量"用户请求→函数调用"的转换数据，使得这种"意图到动作"的映射变得非常流畅。这一点对Agent系统特别重要——因为Agent系统的核心就是把用户的自然语言意图转化为一系列可控、可验证的API调用。
         </div>
 
-        <h3>21.4 代码执行与沙箱</h3>
+        <h2 id="sec-21-4">21.4 代码执行与沙箱</h2>
 
         <p>LLaMA 3最令人兴奋的能力之一是其<strong>代码执行</strong>能力——模型不仅生成代码，还能在受控环境中执行代码并观察执行结果。这个能力在LLaMA 3的"Code Interpreter"模式中得到了充分展现。</p>
 
@@ -257,7 +298,7 @@ final_answer = "这是函数 y = sin(x) 在 [0, 2π] 区间上的图像。\
             <strong>安全警示：</strong> 代码执行能力虽然强大，但也是巨大的安全风险。如果没有适当的沙箱隔离，用户可以通过诱导模型执行恶意代码来攻击服务器。Meta在实现代码执行时采取了多层安全措施：网络隔离（沙箱无网络访问权限）、文件系统限制（只能访问临时目录）、执行超时限制（默认30秒自动终止）、资源限制（内存和CPU使用量上限）。在任何实际部署中，<strong>绝对不要</strong>在没有沙箱保护的环境下执行LLM生成的代码。我在一次安全测试中只用了三行Python代码（一个fork炸弹）就让一个没有沙箱保护的推理服务器崩溃了。安全永远不能心存侥幸。
         </div>
 
-        <h3>21.5 工具调用对比：LLaMA 3 vs GPT-4</h3>
+        <h2 id="sec-21-5">21.5 工具调用对比：LLaMA 3 vs GPT-4</h2>
 
         <p>既然Function Calling是OpenAI先提出的，那么LLaMA 3的实现与GPT-4相比如何？我们来做一次客观的对比。</p>
 
@@ -314,7 +355,7 @@ final_answer = "这是函数 y = sin(x) 在 [0, 2π] 区间上的图像。\
 
         <p>从功能完整性来看，GPT-4的工具调用更成熟——它有原生的API支持、更好的错误处理、并行工具调用等。但LLaMA 3在几个关键维度的优势不可忽视：第一，<strong>私有部署</strong>。很多企业场景中，API调用的数据不能离开内部网络。LLaMA 3可以在完全离线的环境下运行工具调用，这是GPT-4做不到的。第二，<strong>可控性</strong>。开源模型允许开发者修改工具调用的格式和逻辑，定制程度更高。第三，<strong>成本</strong>。在大量工具调用的场景下（如Agent系统可能需要每分钟调用数十次工具），本地部署的成本远低于GPT-4 API。</p>
 
-        <h3>21.6 Agent系统集成：从工具到自主智能</h3>
+        <h2 id="sec-21-6">21.6 Agent系统集成：从工具到自主智能</h2>
 
         <p>工具调用的最终目标不是让模型"学会调用API"，而是构建一个<strong>自主Agent系统</strong>——模型能够根据用户的目标，自主规划任务、选择工具、执行动作、观察结果、调整策略，最终完成复杂的多步骤任务。</p>
 
@@ -370,7 +411,7 @@ final_answer = "这是函数 y = sin(x) 在 [0, 2π] 区间上的图像。\
             <a href="22.html">下一章 →</a>
         </div>
 
-    </div>
+    </main>
 </div>
 </div>
 </body>
