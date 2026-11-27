@@ -9,7 +9,7 @@
 <body>
 <div class="double-border">
 <div class="container">
-    <div class="sidebar">
+    <nav class="sidebar" aria-label="课程目录">
         <h3>🦙 课程目录</h3>
         <ul class="chapter-list">
             <li><a href="01.html">第1章 LLaMA系列概述</a></li>
@@ -41,18 +41,29 @@
             <li><a href="27.html">第27章 LLaMA 4展望与MoE架构</a></li>
             <li><a href="28.html">第28章 开源LLM生态与未来趋势</a></li>
         </ul>
-    </div>
-    <div class="main-content">
+    </nav>
+    <main class="main-content" id="content">
 
-        <h2>第26章 LLaMA 3.2边缘部署与小模型</h2>
+        <h1>第26章 LLaMA 3.2边缘部署与小模型</h1>
+
+        <nav class="toc" aria-label="本章小节导航">
+            <strong>本章导航：</strong>
+            <a href="#sec-26-1">26.1 系列概览</a> ·
+            <a href="#sec-26-2">26.2 小模型设计哲学</a> ·
+            <a href="#sec-26-3">26.3 1B/3B 架构特点</a> ·
+            <a href="#sec-26-4">26.4 移动端部署路线</a> ·
+            <a href="#sec-26-5">26.5 推理速度优化</a> ·
+            <a href="#sec-26-6">26.6 场景实战</a> ·
+            <a href="#sec-26-7">26.7 精度与速度权衡</a>
+        </nav>
 
         <p>大家好。前面几章我们一直在聊推理部署方案——量化、剪枝、服务化、vLLM这些"大模型工业化"的技术。但如果你仔细想想就会意识到一个有趣的问题：我们说的"推理部署"，默认都是把模型放在云端服务器上跑的。可是，如果用户没有网络呢？如果应用场景要求毫秒级响应呢？如果用户不想把自己的数据上传到云端呢？这些场景催生了一个方兴未艾的方向——<strong>边缘部署</strong>，而LLaMA 3.2正是Meta为这个方向交出的答卷。</p>
 
         <p>这一章我们来深度拆解LLaMA 3.2系列，看看Meta是如何把强大的LLaMA能力塞进手机、平板、甚至IoT设备里的。</p>
 
-        <h3>26.1 LLaMA 3.2系列概览</h3>
+        <h2 id="sec-26-1">26.1 LLaMA 3.2系列概览</h2>
 
-        <p>2024年9月，Meta发布了LLaMA 3.2，这是LLaMA系列中第一个专门为边缘设备设计的版本。整个系列包含四个模型：两个纯文本模型（1B和3B）和两个视觉模型（11B和90B）。这个组合很有意思——小模型瞄准移动端和设备端，大模型（带视觉）则是桌面级LLaMA 3的延续。</p>
+        <p>2024年9月，Meta发布了LLaMA 3.2，这是LLaMA系列中第一个专门为边缘设备设计的版本（模型定位与参数见 Meta 的 <a href="https://arxiv.org/abs/2407.21783">LLaMA 3 Herd of Models 报告 arXiv:2407.21783</a>）。整个系列包含四个模型：两个纯文本模型（1B和3B）和两个视觉模型（11B和90B）。这个组合很有意思——小模型瞄准移动端和设备端，大模型（带视觉）则是桌面级LLaMA 3的延续。</p>
 
         <table>
             <tr>
@@ -98,7 +109,7 @@
             <strong>有意思的细节：</strong> LLaMA 3.2 1B和3B并不是从零训练的。Meta的做法是使用LLaMA 3的8B和70B模型进行<strong>知识蒸馏（knowledge distillation）</strong>。也就是说，大模型作为"教师"，生成高质量的训练信号来指导小模型的学习。这个做法使得1B和3B模型虽然体量小，但在很多任务上的表现远远超过了同体量的其他模型。
         </div>
 
-        <h3>26.2 小模型的设计哲学</h3>
+        <h2 id="sec-26-2">26.2 小模型的设计哲学</h2>
 
         <p>为什么在2024年、大模型已经卷到千亿参数的时代，Meta会回头去做1B和3B的小模型？这背后有几个深层次的思考。</p>
 
@@ -143,7 +154,7 @@
             </tr>
         </table>
 
-        <h3>26.3 LLaMA 3.2 1B/3B 架构特点</h3>
+        <h2 id="sec-26-3">26.3 LLaMA 3.2 1B/3B 架构特点</h2>
 
         <p>LLaMA 3.2的小模型和LLaMA 3的8B模型架构上高度一致，核心差异在于深度（层数）和宽度（隐藏层维度）。</p>
 
@@ -182,7 +193,7 @@
             <strong>实战建议：</strong> 如果你计划把LLaMA 3.2 1B部署到手机上，最好先用<code>llama.cpp</code>做4-bit量化。量化后的1B模型大小约700MB，在iPhone 15 Pro的Neural Engine上可以实现每秒30-40个token的生成速度。对于智能回复这种短文本生成场景，延迟完全可以接受。
         </div>
 
-        <h3>26.4 移动端部署路线图</h3>
+        <h2 id="sec-26-4">26.4 移动端部署路线图</h2>
 
         <p>把LLaMA模型塞进手机不是一个简单的"把权重转一下格式"的问题。移动端的部署涉及多个层次的优化。让我带你走一遍完整的部署路径。</p>
 
@@ -260,9 +271,37 @@ torch.onnx.export(
 
         <p>常见的量化方案有两种：<strong>GPTQ</strong>（适用于GPU部署）和<strong>GGML/GGUF</strong>（适用于CPU部署）。对于移动端，GGUF格式配合llama.cpp是最成熟的选择。4-bit量化后的1B模型只有约700MB，3B模型约1.8GB——这在2024-2025年的旗舰手机上已经完全可以接受。</p>
 
+        <figure>
+            <svg viewBox="0 0 560 320" role="img" aria-labelledby="fig-edge-mem-title" xmlns="http://www.w3.org/2000/svg">
+                <title id="fig-edge-mem-title">LLaMA 3.2 1B/3B 的权重占用：FP16 与 4-bit 对比（教学估算）</title>
+                <desc>1B 模型 FP16 约 2GB、4-bit 约 0.7GB；3B 模型 FP16 约 6GB、4-bit 约 1.8GB。位宽越低，权重占用越小，越适合手机内存。</desc>
+                <text x="300" y="24" font-size="13" text-anchor="middle" fill="#334155">权重占用估算（GB）</text>
+                <rect x="330" y="36" width="14" height="14" fill="#94a3b8"/>
+                <text x="350" y="48" font-size="12" fill="#475569">FP16</text>
+                <rect x="400" y="36" width="14" height="14" fill="#0d9488"/>
+                <text x="420" y="48" font-size="12" fill="#0f766e">4-bit 量化</text>
+                <line x1="150" y1="70" x2="150" y2="290" stroke="#cbd5e1" stroke-width="2"/>
+                <text x="146" y="80" font-size="12" text-anchor="end" fill="#334155">1B · FP16</text>
+                <rect x="150" y="68" width="96" height="24" fill="#94a3b8"/>
+                <text x="252" y="85" font-size="12" fill="#475569">~2 GB</text>
+                <text x="146" y="122" font-size="12" text-anchor="end" fill="#334155">1B · 4-bit</text>
+                <rect x="150" y="110" width="34" height="24" fill="#0d9488"/>
+                <text x="190" y="127" font-size="12" fill="#0f766e">~0.7 GB</text>
+                <text x="146" y="172" font-size="12" text-anchor="end" fill="#334155">3B · FP16</text>
+                <rect x="150" y="160" width="288" height="24" fill="#94a3b8"/>
+                <text x="444" y="177" font-size="12" fill="#475569">~6 GB</text>
+                <text x="146" y="222" font-size="12" text-anchor="end" fill="#334155">3B · 4-bit</text>
+                <rect x="150" y="210" width="86" height="24" fill="#0d9488"/>
+                <text x="242" y="227" font-size="12" fill="#0f766e">~1.8 GB</text>
+                <text x="300" y="268" font-size="11" text-anchor="middle" fill="#64748b">横轴：每 48px ≈ 1 GB。FP16 约按「参数量 × 2 字节」估算；4-bit 为 GGUF 量化后的近似值。</text>
+                <text x="300" y="292" font-size="11" text-anchor="middle" fill="#94a3b8">教学估算值（已作简化），实际占用受词表、KV Cache 与运行时影响</text>
+            </svg>
+            <figcaption><strong>图 26-1.</strong> LLaMA 3.2 1B/3B 的权重占用估算：四-bit 量化把 3B 模型从约 6GB 压到约 1.8GB，才能进入手机内存预算。数值为教学估算（已作简化），其中 1B 与 3B 的 4-bit 值取自本节上文，FP16 按参数量 ×2 字节推算；真实占用还会叠加 KV Cache 与运行时开销。</figcaption>
+        </figure>
+
         <p>我来分享一个我们团队在量化过程中踩过的坑。最初我们直接用GPTQ做4-bit量化，在PC端测试效果不错，但移植到Android手机上后，发现推理速度比预期慢了很多。排查了半天才发现问题出在反量化操作上——GPTQ的反量化需要在GPU上实时执行，而Android手机的GPU Delegate对某些非标准算子的支持不够完善，导致部分操作回退到了CPU执行。解决方案是改用GGUF格式+llama.cpp，因为GGUF的量化方案在设计之初就考虑了各种硬件平台的兼容性。这个教训告诉大家：<strong>在移动端部署，不要只看量化精度，更要关注量化格式和目标硬件的匹配度。</strong></p>
 
-        <h3>26.5 推理速度优化</h3>
+        <h2 id="sec-26-5">26.5 推理速度优化</h2>
 
         <p>模型量化只是第一步。要让模型在手机上真正"跑得起来"，还需要一系列速度优化技巧。</p>
 
@@ -304,7 +343,7 @@ class QuantizedKVCache:
             <strong>重要提醒：</strong> KV Cache量化虽然能节省大量显存，但过度的量化（比如4-bit）在某些任务上会导致明显的精度损失。特别是在需要长距离依赖的任务上（比如文档级别的问答），建议保持8-bit量化以上。我们在金融文档摘要任务上做过对比测试：8-bit KV Cache的ROUGE-L分数下降不到1%，但4-bit下降了约5%。这个trade-off需要在项目初期就评估清楚。
         </div>
 
-        <h3>26.6 边缘部署场景实战</h3>
+        <h2 id="sec-26-6">26.6 边缘部署场景实战</h2>
 
         <p>理论说够了，来看几个真实的边缘部署场景。这些不是假设，而是我和团队在过去一年里实际交付的项目。</p>
 
@@ -328,7 +367,7 @@ class QuantizedKVCache:
             结论：ANE/GPU加速能带来2-3倍的速度提升，强烈推荐开启。
         </div>
 
-        <h3>26.7 精度与速度的权衡</h3>
+        <h2 id="sec-26-7">26.7 精度与速度的权衡</h2>
 
         <p>很多同学会问："1B模型这么小，能力够用吗？"这个问题不能一概而论，关键看任务类型。下面是用LLaMA 3.2 1B和3B在几个标准benchmark上的对比：</p>
 
@@ -379,7 +418,7 @@ class QuantizedKVCache:
             <a href="27.html">下一章 →</a>
         </div>
 
-    </div>
+    </main>
 </div>
 </div>
 </body>
